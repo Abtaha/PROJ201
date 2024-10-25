@@ -53,32 +53,30 @@ data3 = pandas.read_csv("Event List for PROJ Dersi.csv")
 dfs = [data1, data2, data3]
 colors = ["red", "green", "blue"]
 
-# features = [extract_features(np.array(data["times"]), np.array(data["energies"])) for data in dfs]
-# print(json.dumps(features, indent=4))
-
-fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(4, 6))
-
-
-for i, df in enumerate([dfs[-1]]):
+for i, df in enumerate(dfs):
     X = np.array(dfs[i])
-    ax1.hist(dfs[i]["times"], bins=125, label="Histogram", color=colors[i], alpha=0.5)
+    BIN_SIZE = np.arange(min(dfs[i]["times"]), max(dfs[i]["times"]), 0.002)
+
+    # Create subplots
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 8))
+
+    ax1.hist(dfs[i]["times"], bins=BIN_SIZE, label="Full Spectrum", color=colors[i])
     ax1.set_xlabel("Time")
     ax1.set_ylabel("Number of Photons")
     ax1.set_title("Overlay of Gamma-Ray Bursts")
 
-    lower_band = [x[0] for x in X if 5 < x[1] < 30]
-    ax2.hist(lower_band, bins=125, label="Histogram", color=colors[i], alpha=0.5)
+    lower_band = [x[0] for x in X if x[1] < 50]
+    ax2.hist(lower_band, bins=BIN_SIZE, label="Low Energy Band", color=colors[i])
     ax2.set_xlabel("Time")
     ax2.set_ylabel("Number of Photons")
-    ax2.set_title("Overlay of Gamma-Ray Bursts")
+    ax2.set_title("Gamma-Ray Bursts: Low Energy Band (Energy < 50)")
 
-    high_band = [x[0] for x in X if 30 < x[1]]
-    ax3.hist(high_band, bins=125, label="Histogram", color=colors[i], alpha=0.5)
+
+    high_band = [x[0] for x in X if 50 < x[1]]
+    ax3.hist(high_band, bins=BIN_SIZE, label="High Energy Band", color=colors[i])
     ax3.set_xlabel("Time")
     ax3.set_ylabel("Number of Photons")
-    ax3.set_title("Overlay of Gamma-Ray Bursts")
+    ax3.set_title("Gamma-Ray Bursts: High Energy Band (Energy > 50)")
 
-
-
-plt.tight_layout()
-plt.show()
+    plt.tight_layout()
+    plt.show()
