@@ -52,6 +52,14 @@ for base_name, datasets in data.items():
     # Set the bin size
     bin_size = 0.002
 
+    if datasets["main"] is not None:
+        datasets["main"]["time"] = datasets["main"]["time"][
+            datasets["main"]["time"] >= 0
+        ]
+
+    if datasets["sb"] is not None:
+        datasets["sb"]["time"] = datasets["sb"]["time"][datasets["sb"]["time"] >= 0]
+
     # Plot histogram for 'main' time data using np.histogram
     if datasets["main"] is not None:
         # Calculate the histogram data
@@ -72,13 +80,12 @@ for base_name, datasets in data.items():
             datasets["main"]["time"],
             bins=time_bins,
             label="Main Times",
-            color="b",
-            edgecolor="black",
+            color="blue",
+            edgecolor="blue",
         )
         ax1.set_xlabel("Time")
         ax1.set_ylabel("Number of Photons")
         ax1.set_title("Main Times")
-        ax1.set_xlim(left=0)
 
         # Mark the peaks on the histogram
         ax1.plot(time_bins[peaks], time_counts[peaks], "rx", label="Peaks")
@@ -103,21 +110,26 @@ for base_name, datasets in data.items():
             datasets["sb"]["time"],
             bins=time_bins,
             label="SB Times",
-            color="r",
-            edgecolor="black",
+            color="red",
+            edgecolor="red",
         )
         ax2.set_xlabel("Time")
         ax2.set_ylabel("Number of Photons")
         ax2.set_title("SB Times")
-        ax2.set_xlim(left=0)
 
         # Mark the peaks on the histogram
         ax2.plot(time_bins[peaks], time_counts[peaks], "rx", label="Peaks")
 
     # Plot the intersection of 'main' and 'sb' times in the third chart
     if datasets["main"] is not None and datasets["sb"] is not None:
-        # Find the intersection of 'main' and 'sb' times (common time values)
-        common_times = np.intersect1d(datasets["main"]["time"], datasets["sb"]["time"])
+        # Use broadcasting to calculate pairwise differences and find matches within tolerance
+        common_times = datasets["main"]["time"][
+            np.any(
+                np.abs(datasets["main"]["time"][:, None] - datasets["sb"]["time"])
+                <= 0.02,
+                axis=1,
+            )
+        ]
 
         # Calculate bins based on the bin size for the intersection
         common_time_bins = np.arange(
@@ -128,12 +140,11 @@ for base_name, datasets in data.items():
             bins=common_time_bins,
             label="Intersection of Main and SB Times",
             color="purple",
-            edgecolor="black",
+            edgecolor="purple",
         )
         ax3.set_xlabel("Time")
         ax3.set_ylabel("Number of Photons")
         ax3.set_title("Intersection of Main and SB Times")
-        ax3.set_xlim(left=0)
 
     # Add titles and legends
     plt.suptitle(f"{base_name} Data")
