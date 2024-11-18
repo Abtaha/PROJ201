@@ -82,8 +82,8 @@ def extract_features(time_data, energy_data, peak_time=None):
     # Collecting all features into a dictionary
     features = {
         "Peak Intensity": peak_intensity,
-        "Mean Time": mean_time,
-        "Std Time": std_time,
+        # "Mean Time": mean_time,
+        # "Std Time": std_time,
         "Mean Energy": mean_energy,
         "Std Energy": std_energy,
         "SNR": SNR,
@@ -137,19 +137,20 @@ for file in os.listdir(folder):
                 "energy": energy_array,
             }
 
+all_fts = []
 for base_name, datasets in data.items():
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 8))
 
     # Set the bin size
     bin_size = 0.002
 
-    if datasets["main"] is not None:
-        datasets["main"]["time"] = datasets["main"]["time"][
-            datasets["main"]["time"] >= 0
-        ]
+    # if datasets["main"] is not None:
+    #     datasets["main"]["time"] = datasets["main"]["time"][
+    #         datasets["main"]["time"] >= 0
+    #     ]
 
-    if datasets["sb"] is not None:
-        datasets["sb"]["time"] = datasets["sb"]["time"][datasets["sb"]["time"] >= 0]
+    # if datasets["sb"] is not None:
+    #     datasets["sb"]["time"] = datasets["sb"]["time"][datasets["sb"]["time"] >= 0]
 
     # Plot histogram for 'main' time data using np.histogram
     if datasets["main"] is not None:
@@ -166,7 +167,7 @@ for base_name, datasets in data.items():
         # Plot the histogram
         ax1.hist(
             datasets["main"]["time"],
-            bins=time_bins,
+            bins=1000,
             label="Main Times",
             color="blue",
             edgecolor="black",
@@ -264,7 +265,8 @@ for base_name, datasets in data.items():
             np.array([entry["time"] for entry in common_data]),
             np.array([entry["energy"] for entry in common_data]),
         )
-        print(json.dumps(features, indent=4))
+        # print(json.dumps(features, indent=4))
+        all_fts.append(features)
 
         # # Mark valid peaks
         # ax3.plot(
@@ -278,8 +280,22 @@ for base_name, datasets in data.items():
     ax3.legend()
 
     # Adjust layout and show the plot
-    plt.tight_layout()
-    plt.show()
+    # plt.tight_layout()
+    # plt.show()
+
+rise_times = [ft["Rise Time"] for ft in all_fts]
+
+# Create a bar chart
+plt.bar(range(len(rise_times)), rise_times)
+
+# Add labels and title
+plt.xlabel("Index")
+plt.ylabel("Rise Time")
+plt.title("Rise Times Bar Graph")
+
+# Show the plot
+plt.show()
+
 
 """
 main_times = []
