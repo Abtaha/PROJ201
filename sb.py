@@ -8,6 +8,97 @@ import re
 import scipy
 import scipy.signal
 
+import numpy as np
+from scipy.stats import skew
+from scipy.integrate import trapezoid
+from scipy.ndimage import binary_erosion, binary_dilation, label
+
+
+def extract_features(time_data, energy_data, peak_time=None):
+    """
+    Extracts a variety of features from the time-series data of a photon burst.
+
+    Parameters:
+    - time_data (np.array): Array of photon arrival times.
+    - energy_data (np.array): Array of photon energy levels corresponding to the time_data.
+    - peak_time (float, optional): Time of the peak event if known; otherwise, the peak is calculated.
+
+    Returns:
+    - features (dict): Dictionary of extracted features.
+    """
+
+    # 1. Amplitude-based Features
+    peak_intensity = np.max(energy_data)  # Peak intensity is the max energy level
+
+    # Calculate the mean and standard deviation of the time and energy
+    mean_time = np.mean(time_data)
+    std_time = np.std(time_data)
+    mean_energy = np.mean(energy_data)
+    std_energy = np.std(energy_data)
+
+    # Signal-to-Noise Ratio (SNR) calculation
+    if peak_time is None:
+        peak_time = time_data[
+            np.argmax(energy_data)
+        ]  # If no peak time is given, calculate it from energy
+    background_noise = np.std(
+        energy_data[(time_data < peak_time - 0.1) | (time_data > peak_time + 0.1)]
+    )
+    SNR = peak_intensity / background_noise
+
+    # 2. Time-based Features
+    # Rise time (time taken to reach peak intensity)
+    rise_time = time_data[np.argmax(energy_data)] - time_data[0]
+
+    # Decay time (time taken to return to 10% of the peak intensity)
+    decay_time_idx = np.where(energy_data <= 0.1 * peak_intensity)[0]
+    decay_time = (
+        time_data[decay_time_idx[0]] - time_data[np.argmax(energy_data)]
+        if decay_time_idx.size > 0
+        else np.nan
+    )
+
+    # Duration (total time of the burst)
+    duration = time_data[-1] - time_data[0]
+
+    # Centroid (weighted average of time based on energy)
+    centroid = np.sum(time_data * energy_data) / np.sum(energy_data)
+
+    # Skewness (measure of asymmetry)
+    skewness = skew(energy_data)
+
+    # 3. Morphological Features
+    # Area under the curve (AUC) for the energy vs. time graph
+    auc = trapezoid(energy_data, time_data)
+
+    # Binary signal for morphological analysis (above 10% of peak intensity)
+    binary_signal = energy_data > 0.1 * peak_intensity
+    dilated_signal = binary_dilation(binary_signal)
+    eroded_signal = binary_erosion(binary_signal)
+
+    # Number of distinct regions (connected components after dilation)
+    regions, num_regions = label(dilated_signal)
+
+    # Collecting all features into a dictionary
+    features = {
+        "Peak Intensity": peak_intensity,
+        "Mean Time": mean_time,
+        "Std Time": std_time,
+        "Mean Energy": mean_energy,
+        "Std Energy": std_energy,
+        "SNR": SNR,
+        "Rise Time": rise_time,
+        "Decay Time": decay_time,
+        "Duration": duration,
+        "Centroid": centroid,
+        "Skewness": skewness,
+        "AUC": auc,
+        "Number of Regions": num_regions,
+    }
+
+    return features
+
+
 # Define folder path
 folder = os.path.join(os.getcwd(), "Sgr1935 Event List")
 data = {}
@@ -72,23 +163,17 @@ for base_name, datasets in data.items():
             ),
         )
 
-        # Detect peaks in the histogram
-        peaks, _ = scipy.signal.find_peaks(time_counts, prominence=70)
-
         # Plot the histogram
         ax1.hist(
             datasets["main"]["time"],
             bins=time_bins,
             label="Main Times",
             color="blue",
-            edgecolor="blue",
+            edgecolor="black",
         )
         ax1.set_xlabel("Time")
         ax1.set_ylabel("Number of Photons")
         ax1.set_title("Main Times")
-
-        # Mark the peaks on the histogram
-        ax1.plot(time_bins[peaks], time_counts[peaks], "rx", label="Peaks")
 
     # Plot histogram for 'sb' time data using np.histogram
     if datasets["sb"] is not None:
@@ -102,26 +187,29 @@ for base_name, datasets in data.items():
             ),
         )
 
-        # Detect peaks in the histogram
-        peaks, _ = scipy.signal.find_peaks(time_counts)
-
         # Plot the histogram
         ax2.hist(
             datasets["sb"]["time"],
             bins=time_bins,
             label="SB Times",
             color="red",
-            edgecolor="red",
+            edgecolor="black",
         )
         ax2.set_xlabel("Time")
         ax2.set_ylabel("Number of Photons")
         ax2.set_title("SB Times")
 
-        # Mark the peaks on the histogram
-        ax2.plot(time_bins[peaks], time_counts[peaks], "rx", label="Peaks")
-
     # Plot the intersection of 'main' and 'sb' times in the third chart
     if datasets["main"] is not None and datasets["sb"] is not None:
+        common_data = []
+
+        for i, mtime in enumerate(datasets["main"]["time"]):
+            for stime in datasets["sb"]["time"]:
+                if abs(mtime - stime) <= 0.02:
+                    common_data.append(
+                        {"time": mtime, "energy": datasets["main"]["energy"][i]}
+                    )
+
         # Use broadcasting to calculate pairwise differences and find matches within tolerance
         common_times = datasets["main"]["time"][
             np.any(
@@ -135,16 +223,53 @@ for base_name, datasets in data.items():
         common_time_bins = np.arange(
             min(common_times), max(common_times) + bin_size, bin_size
         )
+
+        # Create histogram data
+        time_counts, _ = np.histogram(common_times, bins=common_time_bins)
+
+        # Identify peaks using stricter up-then-down condition
+        valid_peaks = []
+        peak_start = None  # Track the start of the peak
+
+        # Find the maximum histogram value
+        max_value = np.max(time_counts)
+
+        for i in range(1, len(time_counts) - 1):
+            # Check if the current bin is greater than the previous bin (gradual increase)
+            if time_counts[i] > time_counts[i - 1]:
+                if peak_start is None:
+                    peak_start = i  # Mark the start of the rise
+
+            # After the peak starts, check for the decrease to 10% of the highest bin value
+            if peak_start is not None and time_counts[i] < time_counts[i - 1]:
+                # Ensure it drops to 10% of the maximum value
+                if time_counts[i] <= 0.1 * max_value:
+                    # Peak detected, add it and reset the start
+                    valid_peaks.append(peak_start)
+                    peak_start = None  # Reset peak detection
+
         ax3.hist(
             common_times,
             bins=common_time_bins,
             label="Intersection of Main and SB Times",
             color="purple",
-            edgecolor="purple",
+            edgecolor="black",
         )
         ax3.set_xlabel("Time")
         ax3.set_ylabel("Number of Photons")
         ax3.set_title("Intersection of Main and SB Times")
+
+        # Now, pass common_times and common_energies to the extract_features function
+        features = extract_features(
+            np.array([entry["time"] for entry in common_data]),
+            np.array([entry["energy"] for entry in common_data]),
+        )
+        print(json.dumps(features, indent=4))
+
+        # # Mark valid peaks
+        # ax3.plot(
+        #     common_time_bins[valid_peaks], time_counts[valid_peaks], "rx", label="Peaks"
+        # )
 
     # Add titles and legends
     plt.suptitle(f"{base_name} Data")
