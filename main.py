@@ -2,6 +2,7 @@ import json
 import pandas
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 
 
@@ -33,7 +34,7 @@ def compute_threshold(photon_times, bin_size=0.002, factor=2):
     # Identify bins where photon count exceeds the computed threshold
     thresholded_bins = time_bins[:-1][photon_counts > threshold]
     
-    return time_bins, photon_counts, thresholded_bins, threshold
+    return time_bins, photon_counts, thresholded_bins#, threshold
 
 
 def extract_features(time, energy):
@@ -54,15 +55,48 @@ def extract_features(time, energy):
         "burst_frequency": burst_frequency,
     }
 
+feature_types = ["peak_photon_count", "duration", "fluence",
+            "rise_time", "fall_time", "burst_frequency"]
 
 # Read in the data
-data1 = pandas.read_csv("Event List for PROJ dersi.csv")
-data2 = pandas.read_csv("Event Lists for PROJ Dersi (1).csv")
-data3 = pandas.read_csv("Event List for PROJ Dersi.csv")
+files = os.listdir("events")
+dfs=[]
+for i in range(12):
+    exec(f"m{i+1} = pandas.read_csv('events/{i+1}.csv')")
+    #exec(f"s{i} = {i}s.csv")
+    dfs.append(eval(f"m{i+1}"))
+    i+=1
+flist = []
+for i, df in enumerate(dfs, start=1):
+    #times = list(df["times"])
+    #times = [time for time in times if time >= 0]
+    #print(times[0])
+    exec(f"features{i} = extract_features(list(df['times']), list(df['energies']))")
+    #print(list(df['times']))
+    flist.append(f"features{i}")
+print(features1)
+[features1]
 
-dfs = [data1, data2, data3]
-colors = ["red", "green", "blue"]
+    #colors = ["red", "green", "blue"]
 
+colors = ["red", "green", "blue", "yellow", "orange", "purple"]
+for i, feature in enumerate(feature_types):
+    fig = plt.figure(figsize = (10, 5))
+    ilgili = []
+    for k in range(12):
+        ilgili.append(eval(f"features{k+1}"))
+    names = [1,2,3,4,5,6,7,8,9,10,11,12]
+    #print(features1 == features2)
+    values = [x[feature] for x in ilgili]
+    plt.bar(names, values, color = colors[i], 
+        width = 0.9)
+    plt.xlabel("Burst sources")
+    plt.ylabel(feature)
+    plt.title("Graph of features")
+    plt.show()
+
+
+"""
 for i, df in enumerate(dfs):
     X = np.array(dfs[i])
     BIN_SIZE = np.arange(min(dfs[i]["times"]), max(dfs[i]["times"]), 0.002)
@@ -109,3 +143,4 @@ for i, df in enumerate(dfs):
     # print("Extracted Features:")
     # for key, value in features.items():
     #     print(f"{key}: {value}")
+"""

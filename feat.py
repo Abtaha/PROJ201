@@ -2,6 +2,9 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import numpy as np
 
+from scipy.stats import skew
+from scipy.integrate import trapezoid
+from scipy.ndimage import binary_erosion, binary_dilation, label
 
 class Photon:
     def __init__(self, energy, time):
@@ -16,10 +19,26 @@ class Photon:
 
 
 class Event:
+    features = {
+        "Peak Intensity": "keV",
+        # "Mean Time": "s",
+        # "Std Time": "s",
+        "Mean Energy": "keV",
+        "Std Energy": "keV",
+        "SNR": None,
+        "Rise Time": "s",
+        "Decay Time": "s",
+        "Duration": "s",
+        "Centroid": None,
+        "Skewness": None,
+        "AUC": "keV",
+        "Number of Regions": None,
+    }
     def __init__(self, photons, type, name="Unnamed"):
         self.photons = photons
         self.type = type
         self.name = name
+        
 
     def __str__(self):
         return f"Event(photons={self.photons})"
@@ -144,7 +163,7 @@ def plot_events_multiple_axes(
     plt.show(block=True)  # Keeps the window open
 
 
-def plot_event(event: Event, threshold=None, bin_size=0.02):
+def plot_event(event: Event, threshold=None, bin_size=0.02, hist=False):
     """
     Plot the events based on a threshold, focusing on photon times.
     Exclude bins with fewer photons than the threshold.
@@ -169,6 +188,9 @@ def plot_event(event: Event, threshold=None, bin_size=0.02):
         if threshold is not None
         else np.ones_like(time_counts, dtype=bool)
     )
+    
+    if hist:
+        return zip(time_bins[:-1][filtered_bins], time_counts[filtered_bins])
 
     # Plot only the bins that exceed the threshold
     plt.bar(
@@ -290,6 +312,141 @@ def compute_threshold2(event, bin_size=0.02, percentile=10):
 
     return threshold
 
+def extract_features(event, hist, threshold=None, peak_time=None):
+    """
+    Extracts a variety of features from the time-series data of a photon burst.
+
+    Parameters:
+    - time_data (np.array): Array of photon arrival times.
+    - energy_data (np.array): Array of photon energy levels corresponding to the time_data.
+    - peak_time (float, optional): Time of the peak event if known; otherwise, the peak is calculated.
+
+    Returns:
+    - features (dict): Dictionary of extracted features.
+    """
+    time_bins, time_counts = zip(*hist)
+    
+    time_data = np.array([photon.time for photon in event.photons])
+    energy_data = np.array([photon.energy for photon in event.photons])
+    # find the histogram starting time
+    for td in time_data:
+        if td >= time_bins[0]:
+            start_index = np.where(time_data == td)[0][0]
+            break
+    for td in time_data:
+        if td >= time_bins[-1]:
+            end_index = np.where(time_data == td)[0][0] - 1
+            break
+    time_data = time_data[start_index:end_index+1]
+    energy_data = energy_data[start_index:end_index+1]
+
+    # 1. Amplitude-based Features
+    peak_intensity = np.max(energy_data)  # Peak intensity is the max energy level
+
+    # Calculate the mean and standard deviation of the time and energy
+    mean_time = np.mean(time_data)
+    std_time = np.std(time_data)
+    mean_energy = np.mean(energy_data)
+    std_energy = np.std(energy_data)
+
+    # Signal-to-Noise Ratio (SNR) calculation
+    if peak_time is None:
+        peak_time = time_data[
+            np.argmax(energy_data)
+        ]  # If no peak time is given, calculate it from energy
+    background_noise = np.std(
+        energy_data[(time_data < peak_time - 0.1) | (time_data > peak_time + 0.1)]
+    )
+    SNR = peak_intensity / background_noise
+
+    # 2. Time-based Features
+    # Rise time (time taken to reach peak intensity)
+    # histograma ihtiyaç var, ilgili bin - 0 benim için rise edilmiş timeı verecek
+    peak_index = time_counts.index(max(time_counts))
+    peak_bin = time_bins[peak_index]
+    #print(peak_bin)
+    #print(time_data[0])
+    #print(time_bins[0])
+    #print(time_bins)
+    
+    rise_time = peak_bin - time_data[0]
+    decay_time = time_data[-1] - peak_bin
+
+    # Decay time (time taken to return to 10% of the peak intensity)
+    #decay_time_idx = np.where(energy_data <= 0.1 * peak_intensity)[0]
+    #decay_time = (
+    #    time_data[decay_time_idx[0]] - time_data[np.argmax(energy_data)]
+    #    if decay_time_idx.size > 0
+    #    else np.nan
+    #)
+
+    # Duration (total time of the burst)
+    duration = time_data[-1] - time_data[0]
+
+    # Centroid (weighted average of time based on energy)
+    centroid = np.sum(time_data * energy_data) / np.sum(energy_data)
+
+    # Skewness (measure of asymmetry)
+    skewness = skew(energy_data)
+
+    # 3. Morphological Features
+    # Area under the curve (AUC) for the energy vs. time graph
+    #auc = trapezoid(energy_data, time_data)
+    # Alternative approach, directly summing the energies, in keV unit
+    auc = sum(energy_data)
+
+    # Binary signal for morphological analysis (above 10% of peak intensity)
+    binary_signal = energy_data > 0.1 * peak_intensity
+    dilated_signal = binary_dilation(binary_signal)
+    eroded_signal = binary_erosion(binary_signal)
+
+    # Number of distinct regions (connected components after dilation)
+    regions, num_regions = label(dilated_signal)
+
+    # Collecting all features into a dictionary
+    features = {
+        "Peak Intensity": peak_intensity,
+        # "Mean Time": mean_time,
+        # "Std Time": std_time,
+        "Mean Energy": mean_energy,
+        "Std Energy": std_energy,
+        "SNR": SNR,
+        "Rise Time": rise_time,
+        "Decay Time": decay_time,
+        "Duration": duration,
+        "Centroid": centroid,
+        "Skewness": skewness,
+        "AUC": auc,
+        "Number of Regions": num_regions,
+    }
+
+    return features
+
+def plot_features(events_features:dict) -> None:
+    # For every frature in existing features
+    for i, feature in enumerate(Event.features.keys()):
+        event_ids = [event_id for event_id, features in events_features.items()]
+        values = [features[feature] for event_id, features in events_features.items()]
+        plt.bar(
+        event_ids,  # Bin edges for the x-axis
+        values,  # Counts for the y-axis
+        width=0.5,
+        color="coral",
+        edgecolor="black",
+        )
+
+        plt.xlabel("Event ID")
+        ylabel = feature
+        if Event.features[feature] != None:
+            unit = Event.features[feature]
+            ylabel += f" ({unit})"
+        plt.xticks(range(1, len(event_ids)+1))
+        plt.ylabel(ylabel)
+        plt.legend()
+        plt.title(f"Comparison of Events based on {feature}")
+        plt.show()
+
+    
 
 if __name__ == "__main__":
     BIN_SIZE = 0.02
@@ -300,7 +457,8 @@ if __name__ == "__main__":
         main_event = read_event(f"events/{i}.csv", "main")
         sb_event = read_event(f"events/{i}s.csv", "sb")
         events_list.append(EventList(main_event, sb_event))
-
+    
+    feature_dict = {}
     for i, events in enumerate(events_list):
         # threshold = compute_threshold(events.main)
         # filtered = filter_event(events.main, 0.1)
@@ -308,10 +466,16 @@ if __name__ == "__main__":
         # combined = events.main
         # threshold = compute_threshold(combined, bin_size=BIN_SIZE, percentile=10)
         threshold = compute_threshold2(combined, bin_size=BIN_SIZE, percentile=10)
-        print(threshold)
+        #print(threshold)
 
-        # plot_events_multiple_axes([events.main, events.sb, combined], bin_size=BIN_SIZE)
-        plot_event(combined, threshold=threshold, bin_size=BIN_SIZE)
+        #plot_events_multiple_axes([events.main, events.sb, combined], bin_size=BIN_SIZE)
+        # If you want to plot the event histograms just uncomment following line
+        #plot_event(combined, threshold=threshold, bin_size=BIN_SIZE)
+        hist = plot_event(combined, threshold=threshold, bin_size=BIN_SIZE, hist=True)
+        combined.features = extract_features(combined, hist, threshold=threshold)
+        feature_dict[i+1] = combined.features
+    plot_features(feature_dict)
+        
 
     # # Example events
     # event1 = Event([Photon(time, time) for time in np.random.uniform(0, 10, 100)], "Type A")
