@@ -2,7 +2,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import numpy as np
 
-from scipy.stats import skew
+from scipy import stats
 from scipy.integrate import trapezoid
 from scipy.ndimage import binary_erosion, binary_dilation, label
 
@@ -25,14 +25,15 @@ class Event:
         # "Std Time": "s",
         "Mean Energy": "keV",
         "Std Energy": "keV",
-        "SNR": None,
+        #"SNR": None,
         "Rise Time": "s",
         "Decay Time": "s",
         "Duration": "s",
         "Centroid": None,
         "Skewness": None,
-        "AUC": "keV",
-        "Number of Regions": None,
+        "Kurtosis": None,
+        "Total Energy Released": "keV",
+        #"Number of Regions": None,
     }
     def __init__(self, photons, type, name="Unnamed"):
         self.photons = photons
@@ -386,8 +387,10 @@ def extract_features(event, hist, threshold=None, peak_time=None):
     # Centroid (weighted average of time based on energy)
     centroid = np.sum(time_data * energy_data) / np.sum(energy_data)
 
-    # Skewness (measure of asymmetry)
-    skewness = skew(energy_data)
+    # Skewness (measure of asymmetry) and Kurtosis (Tailedness)
+    #skewness = skew(energy_data)
+    skewness = stats.skew(time_data)
+    kurtosis = stats.kurtosis(time_data)
 
     # 3. Morphological Features
     # Area under the curve (AUC) for the energy vs. time graph
@@ -410,14 +413,15 @@ def extract_features(event, hist, threshold=None, peak_time=None):
         # "Std Time": std_time,
         "Mean Energy": mean_energy,
         "Std Energy": std_energy,
-        "SNR": SNR,
+        #"SNR": SNR,
         "Rise Time": rise_time,
         "Decay Time": decay_time,
         "Duration": duration,
         "Centroid": centroid,
         "Skewness": skewness,
-        "AUC": auc,
-        "Number of Regions": num_regions,
+        "Kurtosis": kurtosis,
+        "Total Energy Released": auc,
+        #"Number of Regions": num_regions,
     }
 
     return features
@@ -468,9 +472,9 @@ if __name__ == "__main__":
         threshold = compute_threshold2(combined, bin_size=BIN_SIZE, percentile=10)
         #print(threshold)
 
-        #plot_events_multiple_axes([events.main, events.sb, combined], bin_size=BIN_SIZE)
+        plot_events_multiple_axes([events.main, events.sb, combined], bin_size=BIN_SIZE)
         # If you want to plot the event histograms just uncomment following line
-        #plot_event(combined, threshold=threshold, bin_size=BIN_SIZE)
+        plot_event(combined, threshold=threshold, bin_size=BIN_SIZE)
         hist = plot_event(combined, threshold=threshold, bin_size=BIN_SIZE, hist=True)
         combined.features = extract_features(combined, hist, threshold=threshold)
         feature_dict[i+1] = combined.features
