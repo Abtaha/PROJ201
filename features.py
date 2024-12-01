@@ -49,20 +49,23 @@ if __name__ == "__main__":
 
     events_list: list[EventList] = []
 
-    for i in range(1, 4):
+    for i in range(1, 63):
         main_event = read_event(f"events/{i}.csv", "main")
         sb_event = read_event(f"events/{i}s.csv", "sb")
         events_list.append(EventList(main_event, sb_event))
 
     feature_dict = {}
     for i, events in enumerate(events_list):
+        continue
         combined = events.combine_events()
         threshold = combined.compute_threshold()
-        print(threshold)
+        #print(threshold)
 
-        events.plot_events_multiple_axes(bin_size=BIN_SIZE)
-        combined.plot_event(bin_size=BIN_SIZE)
+        #events.plot_events_multiple_axes(bin_size=BIN_SIZE)
+        #combined.plot_event(bin_size=BIN_SIZE)
         feature_dict[i + 1] = combined.extract_features()
-        print(json.dumps(combined.features, indent=4))
+        #print(json.dumps(combined.features, indent=4))
 
-    plot_features(events_features=feature_dict)
+    #plot_features(events_features=feature_dict)
+    #df = pd.DataFrame.from_dict(feature_dict, orient="index")
+    #df.to_csv("export_data.csv")
