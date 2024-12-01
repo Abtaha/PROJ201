@@ -113,7 +113,7 @@ class Event:
         std_counts = np.std(time_counts)
 
         # Compute threshold based on mean + factor * standard deviation
-        threshold = int(mean_counts + factor * std_counts)
+        threshold = mean_counts + factor * std_counts
         self.threshold = threshold
         return threshold
 
@@ -294,7 +294,7 @@ class Event:
         """
         Calculates the number of distinct regions where photon intensity exceeds a threshold.
         """
-        binary_signal = energy_data > 0.1 * peak_intensity
+        binary_signal = energy_data > self.threshold * peak_intensity
         dilated_signal = binary_dilation(binary_signal)
         eroded_signal = binary_erosion(binary_signal)
         _, num_regions = label(dilated_signal)
