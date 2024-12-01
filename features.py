@@ -61,10 +61,10 @@ if __name__ == "__main__":
         #print(threshold)
 
         #events.plot_events_multiple_axes(bin_size=BIN_SIZE)
-        combined.plot_event(bin_size=BIN_SIZE)
+        #combined.plot_event(bin_size=BIN_SIZE)
         feature_dict[i + 1] = combined.extract_features()
         #print(json.dumps(combined.features, indent=4))
 
     #plot_features(events_features=feature_dict)
-    #df = pd.DataFrame.from_dict(feature_dict, orient="index")
-    #df.to_csv("export_data.csv")
+    df = pd.DataFrame.from_dict(feature_dict, orient="index")
+    df.to_csv("export_data.csv")

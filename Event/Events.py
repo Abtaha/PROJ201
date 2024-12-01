@@ -169,6 +169,18 @@ class Event:
         time_data = np.array([photon.time for photon in self.photons])
         energy_data = np.array([photon.energy for photon in self.photons])
 
+        # find the histogram starting time
+        for td in time_data:
+            if td >= time_bins[0]:
+                start_index = np.where(time_data == td)[0][0]
+                break
+        for td in time_data:
+            if td >= time_bins[-1]:
+                end_index = np.where(time_data == td)[0][0] - 1
+                break
+        time_data = time_data[start_index:end_index+1]
+        energy_data = energy_data[start_index:end_index+1]
+
         # Time and energy-based features
         peak_time = time_data[
             np.argmax(energy_data)
