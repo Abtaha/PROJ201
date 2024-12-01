@@ -56,13 +56,12 @@ if __name__ == "__main__":
 
     feature_dict = {}
     for i, events in enumerate(events_list):
-        continue
         combined = events.combine_events()
         threshold = combined.compute_threshold()
         #print(threshold)
 
         #events.plot_events_multiple_axes(bin_size=BIN_SIZE)
-        #combined.plot_event(bin_size=BIN_SIZE)
+        combined.plot_event(bin_size=BIN_SIZE)
         feature_dict[i + 1] = combined.extract_features()
         #print(json.dumps(combined.features, indent=4))
 
