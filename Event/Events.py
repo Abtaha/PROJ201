@@ -107,11 +107,20 @@ class Event:
         Returns:
             np.float64: The computed threshold value.
         """
-        time_counts, _ = self.get_bins(get_thresholded=False, max_time=max_time)
-
+        time_counts, time_bins = self.get_bins(get_thresholded=False, max_time=max_time)
+        
+        # Background noise detection
+        #background_bins_idx = []
+        #for index, time_bin in enumerate(time_bins):
+        #    if time_bin < 0:
+        #        background_bins_idx.append(index)
+        #    else:
+        #        break
+        #background_counts = [time_counts[i] for i in background_bins_idx] 
+        
         mean_counts = np.mean(time_counts)
         std_counts = np.std(time_counts)
-
+        # 5 std + mean of background noise
         # Compute threshold based on mean + factor * standard deviation
         threshold = mean_counts + factor * std_counts
         self.threshold = threshold
