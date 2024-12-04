@@ -2,6 +2,7 @@ from typing import Dict, Tuple
 from matplotlib import pyplot as plt
 import numpy as np
 
+from scipy.ndimage import label
 from scipy import stats
 from scipy.integrate import trapezoid
 from scipy.ndimage import binary_erosion, binary_dilation, label
@@ -51,6 +52,55 @@ class Event:
     def __repr__(self):
         return self.__str__()
 
+    def split_pulses(self) -> list:
+        """
+        Split the event into pulses based on photon count exceeding the threshold.
+
+        Returns:
+            list[Event]: A list of pulse events.
+        """
+        # Compute the threshold and bin the photon counts
+        threshold = self.compute_threshold()
+        counts, bins = self.get_bins(get_thresholded=False)
+
+        # Identify contiguous regions where counts exceed the threshold
+        above_threshold = counts > threshold
+        labeled_regions, num_regions = label(above_threshold)
+
+        pulses = []
+        for region_id in range(1, num_regions + 1):
+            # Find indices of the bins in the current region
+            region_indices = np.where(labeled_regions == region_id)[0]
+            if len(region_indices) == 0:
+                continue
+
+            # Determine the time range of the region
+            start_time = bins[region_indices[0]]
+            end_time = (
+                bins[region_indices[-1] + 1]
+                if region_indices[-1] + 1 < len(bins)
+                else bins[-1]
+            )
+
+            # Extract photons within this time range
+            pulse_photons = [
+                photon
+                for photon in self.photons
+                if start_time <= photon.time < end_time
+            ]
+
+            if pulse_photons:
+                # Create a new Event for the pulse
+                pulses.append(
+                    Event(
+                        photons=pulse_photons,
+                        type=self.type,
+                        name=f"{self.name}_Pulse_{region_id}",
+                    )
+                )
+
+        return pulses
+
     def get_bins(
         self,
         get_thresholded: bool = True,
@@ -93,7 +143,7 @@ class Event:
         # Return the original bins and counts without filtering
         return time_counts[filtered_bins], time_bins[:-1][filtered_bins]
 
-    def compute_threshold(self, max_time: int = 0, factor: int = 5) -> int:
+    def compute_threshold(self, max_time: int = 0, factor: int = 5) -> np.float64:
         """
         Compute a threshold for detecting bursts based on photon counts in time bins.
 
@@ -108,16 +158,16 @@ class Event:
             np.float64: The computed threshold value.
         """
         time_counts, time_bins = self.get_bins(get_thresholded=False, max_time=max_time)
-        
+
         # Background noise detection
-        #background_bins_idx = []
-        #for index, time_bin in enumerate(time_bins):
+        # background_bins_idx = []
+        # for index, time_bin in enumerate(time_bins):
         #    if time_bin < 0:
         #        background_bins_idx.append(index)
         #    else:
         #        break
-        #background_counts = [time_counts[i] for i in background_bins_idx] 
-        
+        # background_counts = [time_counts[i] for i in background_bins_idx]
+
         mean_counts = np.mean(time_counts)
         std_counts = np.std(time_counts)
         # 5 std + mean of background noise
@@ -187,8 +237,8 @@ class Event:
             if td >= time_bins[-1]:
                 end_index = np.where(time_data == td)[0][0] - 1
                 break
-        time_data = time_data[start_index:end_index+1]
-        energy_data = energy_data[start_index:end_index+1]
+        time_data = time_data[start_index : end_index + 1]
+        energy_data = energy_data[start_index : end_index + 1]
 
         # Time and energy-based features
         peak_time = time_data[
