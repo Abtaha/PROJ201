@@ -59,15 +59,15 @@ if __name__ == "__main__":
         combined = events.combine_events()
         threshold = combined.compute_threshold()
 
-        combined.plot_event()
-        pulses = combined.split_pulses()
+        #combined.plot_event()
+        #pulses = combined.split_pulses()
 
-        for pulse in pulses:
-            pulse.plot_event()
+        #for pulse in pulses:
+        #    pulse.plot_event()
 
         # events.plot_events_multiple_axes(bin_size=BIN_SIZE)
         # combined.plot_event(bin_size=BIN_SIZE)
-        # feature_dict[i + 1] = combined.extract_features()
+        feature_dict[i + 1] = combined.extract_features()
         # print(json.dumps(combined.features, indent=4))
 
     # plot_features(events_features=feature_dict)
