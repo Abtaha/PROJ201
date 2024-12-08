@@ -52,54 +52,74 @@ class Event:
     def __repr__(self):
         return self.__str__()
 
-    def split_pulses(self) -> list:
+    def split_pulses(self, bin_size=0.02) -> list:
         """
         Split the event into pulses based on photon count exceeding the threshold.
 
         Returns:
             list[Event]: A list of pulse events.
         """
-        # Compute the threshold and bin the photon counts
-        threshold = self.compute_threshold()
-        counts, bins = self.get_bins(get_thresholded=False)
+        # Get binned photon counts and bins
+        time_counts, time_bins = self.get_bins(get_thresholded=True)
 
-        # Identify contiguous regions where counts exceed the threshold
-        above_threshold = counts > threshold
-        labeled_regions, num_regions = label(above_threshold)
+        # Find the relevant range of photons based on the bins
+        filtered_photons = [
+            photon
+            for photon in self.photons
+            if time_bins[0] <= photon.time < time_bins[-1] + bin_size
+        ]
 
-        pulses = []
-        for region_id in range(1, num_regions + 1):
-            # Find indices of the bins in the current region
-            region_indices = np.where(labeled_regions == region_id)[0]
-            if len(region_indices) == 0:
-                continue
-
-            # Determine the time range of the region
-            start_time = bins[region_indices[0]]
-            end_time = (
-                bins[region_indices[-1] + 1]
-                if region_indices[-1] + 1 < len(bins)
-                else bins[-1]
+        # Ensure we have photons in the filtered range
+        if not filtered_photons:
+            raise ValueError(
+                "No photons in the specified range for feature extraction."
             )
 
-            # Extract photons within this time range
-            pulse_photons = [
-                photon
-                for photon in self.photons
-                if start_time <= photon.time < end_time
-            ]
+        # Dictionary to store photons for each time bin
+        binsdict = {bin: [] for bin in time_bins}
 
-            if pulse_photons:
-                # Create a new Event for the pulse
-                pulses.append(
-                    Event(
-                        photons=pulse_photons,
-                        type=self.type,
-                        name=f"{self.name}_Pulse_{region_id}",
-                    )
-                )
+        # Group photons into bins
+        for i in range(len(time_bins)):
+            start = time_bins[i]
+            end = time_bins[i] + bin_size if i < len(time_bins) - 1 else float("inf")
 
-        return pulses
+            for photon in filtered_photons:
+                if start <= photon.time < end:
+                    binsdict[start].append(photon)
+
+        for i in range(len(time_bins) - 1):
+            print(list(binsdict.keys())[i] == time_bins[i])
+            print(len(list(binsdict.values())[i]) == time_counts[i])
+
+        # Extract pulses as contiguous regions of non-empty bins
+        pulses = []
+        current_pulse = []
+
+        bins = list(binsdict.keys())
+        for i, bin in enumerate(bins):
+            if binsdict[bin]:  # Check if the current bin has photons
+                current_pulse.extend(binsdict[bin])
+
+            # If it's the last bin or the next bin is not contiguous
+            if i == len(bins) - 1 or round(bins[i + 1] - bin, 4) > bin_size:
+                if current_pulse:  # Add the collected photons as a pulse
+                    pulses.append(current_pulse)
+                    current_pulse = []  # Reset for the next pulse
+
+        # Ensure any remaining pulse is added
+        if current_pulse:
+            pulses.append(current_pulse)
+
+        # Create Event objects for each pulse
+        pulse_events = [
+            Event(photons, type="pulse", name=f"Pulse {i + 1}")
+            for i, photons in enumerate(pulses)
+        ]
+
+        if len(pulse_events) == 1:
+            return [self]
+
+        return pulse_events
 
     def get_bins(
         self,
@@ -121,6 +141,9 @@ class Event:
         """
         if not self.photons:
             raise ValueError("No photons provided for binning.")
+
+        if get_thresholded:
+            self.compute_threshold()
 
         # Extract photon times
         photon_times = np.array(
@@ -221,54 +244,57 @@ class Event:
         - features (dict): Dictionary of extracted features including rise time, decay time, duration,
                             energy-based features, and time-based features.
         """
-        # Get binned photon counts
+        # Get binned photon counts and bins
         time_counts, time_bins = self.get_bins(get_thresholded=True)
-        # [print(time_counts[i], time_bins[i]) for i in range(len(time_counts))]
+
+        # Find the relevant range of photons based on the bins
+        filtered_photons = [
+            photon
+            for photon in self.photons
+            if time_bins[0] <= photon.time < time_bins[-1] + bin_size
+        ]
+
+        # Ensure we have photons in the filtered range
+        if not filtered_photons:
+            raise ValueError(
+                "No photons in the specified range for feature extraction."
+            )
 
         # Extract photon times and energies
-        time_data = np.array([photon.time for photon in self.photons])
-        energy_data = np.array([photon.energy for photon in self.photons])
-
-        # find the histogram starting time
-        for td in time_data:
-            if td >= time_bins[0]:
-                start_index = np.where(time_data == td)[0][0]
-                break
-        for td in time_data:
-            if td >= time_bins[-1] + bin_size:
-                end_index = np.where(time_data == td)[0][0] - 1
-                break
-        time_data = time_data[start_index : end_index + 1]
-        energy_data = energy_data[start_index : end_index + 1]
+        photon_times = np.array([photon.time for photon in filtered_photons])
+        photon_energies = np.array([photon.energy for photon in filtered_photons])
 
         # Time and energy-based features
-        peak_time = time_data[
-            np.argmax(energy_data)
-        ]  # Use the time corresponding to the max energy
-        peak_intensity = self._get_peak_intensity(time_data, energy_data, time_bins)
-        mean_time, std_time = self._get_time_statistics(time_data)
-        mean_energy, std_energy = self._get_energy_statistics(energy_data)
+        peak_time = photon_times[np.argmax(photon_energies)]
+        peak_intensity = self._get_peak_intensity(photon_energies)
+        peak_energy_bin, peak_energy_in_bin = self._get_peak_energy_bin(
+            filtered_photons, time_bins
+        )
+        mean_time, std_time = self._get_time_statistics(photon_times)
+        mean_energy, std_energy = self._get_energy_statistics(photon_energies)
 
         # Signal-to-Noise Ratio (SNR)
-        SNR = self._calculate_snr(time_data, energy_data, peak_time)
+        SNR = self._calculate_snr(photon_times, photon_energies, peak_time)
 
         # Time-based features (rise time, decay time, duration)
         rise_time, decay_time = self._get_rise_decay_time(
-            time_bins, time_counts, time_data, energy_data
+            time_bins, time_counts, photon_times, photon_energies
         )
-        duration = self._get_duration(time_data)
+        duration = self._get_duration(photon_times)
 
         # Centroid, skewness, and kurtosis for time data
-        centroid = self._get_centroid(time_data, energy_data)
-        skewness = stats.skew(time_data)
-        kurtosis = stats.kurtosis(time_data)
+        centroid = self._get_centroid(photon_times, photon_energies)
+        skewness = stats.skew(photon_times)
+        kurtosis = stats.kurtosis(photon_times)
 
-        # Total energy released and number of regions
-        auc = self._get_total_energy_released(energy_data)
+        # Total energy released
+        auc = self._get_total_energy_released(photon_energies)
 
         # Compile all features into a dictionary
         features = {
             "Peak Intensity": peak_intensity,
+            "Peak Energy Bin": peak_energy_bin,
+            "Peak Energy In Bin": peak_energy_in_bin,
             "Mean Time": mean_time,
             "Std Time": std_time,
             "Mean Energy": mean_energy,
@@ -281,50 +307,51 @@ class Event:
             "Skewness": skewness,
             "Kurtosis": kurtosis,
             "Total Energy Released": auc,
-            "Peak Time": peak_time,  # Include peak time in the features
+            "Peak Time": peak_time,
         }
 
         self.features = features
         return features
 
-    def _get_peak_intensity(
-        self, time_data: np.ndarray, energy_data: np.ndarray, time_bins: np.ndarray
+    def _get_peak_energy_bin(
+        self, filtered_photons: list[Photon], time_bins: np.ndarray
     ):
+        """
+        Calculates the bin with the peak energy, defined as the bin with the maximum total energy.
+        """
+        # Dictionary to store photons for each time bin
+        binsdict = {bin: [] for bin in time_bins}
+
+        # Group photons into bins
+        for photon in filtered_photons:
+            for i in range(len(time_bins)):
+                start = time_bins[i]
+                end = time_bins[i + 1] if i < len(time_bins) - 1 else float("inf")
+
+                # Check if photon falls in the current bin
+                if start <= photon.time < end:
+                    binsdict[start].append(photon)
+                    break
+
+        # Calculate total energy for each bin
+        energy_sums = {
+            bin: sum(photon.energy for photon in binsdict[bin]) for bin in binsdict
+        }
+
+        # Find the bin with the maximum total energy
+        peak_bin = max(energy_sums, key=energy_sums.get)
+
+        return peak_bin, energy_sums[peak_bin]
+
+    def _get_peak_intensity(self, energy_data: np.ndarray) -> float:
         """
         Calculates the peak intensity, defined as the maximum energy in the event.
         """
-        binsdict = {bin: [] for bin in time_bins}
-        for i in range(len(time_bins)):
-            bin = time_bins[i]
-            start = time_bins[i]
-            if i < len(time_bins) - 1:
-                end = time_bins[i + 1]
-            else:
-                end = float("inf")
-            # end = time_bins[i + 1] if len(time_bins) -i  >= 0 else float('inf')
-            if i == len(time_bins) - 1:
-                photons_in_bin = time_data[(time_data >= start) & (time_data <= end)]
-            else:
-                photons_in_bin = time_data[(time_data >= start) & (time_data < end)]
+        return np.max(energy_data)
 
-            binsdict[bin].append(photons_in_bin)
-
-        energiesdict = {bin: [] for bin in time_bins}
-        for bin, times in binsdict.items():
-            for time in times:
-                timeidx = np.where(time_data == time)[0][0]
-                energy = energy_data[timeidx]
-                energiesdict[bin].append(energy)
-        totalmax = 0
-        energysums = {bin: sum(energies) for bin, energies in energiesdict.items()}
-        max = max(energysums.values())
-
-        answerbin = [key for key in energysums if energysums[key] == max][0]
-
-        # print(json.dumps(binsdict, indent=4))
-        return answerbin
-
-    def _get_time_statistics(self, time_data: np.ndarray) -> Tuple[float, float]:
+    def _get_time_statistics(
+        self, time_data: np.ndarray
+    ) -> Tuple[np.float64, np.float64]:
         """
         Calculates the mean and standard deviation of the photon arrival times.
         """
@@ -332,7 +359,9 @@ class Event:
         std_time = np.std(time_data)
         return mean_time, std_time
 
-    def _get_energy_statistics(self, energy_data: np.ndarray) -> Tuple[float, float]:
+    def _get_energy_statistics(
+        self, energy_data: np.ndarray
+    ) -> Tuple[np.float64, np.float64]:
         """
         Calculates the mean and standard deviation of the photon energies.
         """
@@ -359,7 +388,7 @@ class Event:
         time_counts: np.ndarray,
         time_data: np.ndarray,
         energy_data: np.ndarray,
-    ) -> Tuple[float, float]:
+    ) -> Tuple[np.float64, np.float64]:
         """
         Calculates rise time and decay time based on the time bins and photon data.
         """

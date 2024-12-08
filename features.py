@@ -62,17 +62,15 @@ if __name__ == "__main__":
         a = combined.get_bins()
         combined.plot_event()
 
-        events = combined.split_pulses()
+        pulses = combined.split_pulses()
 
-        for event in events:
-            event.plot_event()
+        for pulse in pulses:
+            pulse.plot_event()
 
         print("NEW EVENT")
 
         # pulses = combined.find_pulses(threshold=threshold, bin_size=BIN_SIZE)
 
-        # for pulse in pulses:
-        #     pulse.plot_event()
         # combined.plot_event()
         # pulses = combined.split_pulses()
 
@@ -81,8 +79,8 @@ if __name__ == "__main__":
 
         # events.plot_events_multiple_axes(bin_size=BIN_SIZE)
         # combined.plot_event(bin_size=BIN_SIZE)
-        # feature_dict[i + 1] = combined.extract_features()
-        # print(json.dumps(combined.features, indent=4))
+        feature_dict[i + 1] = combined.extract_features()
+        print(json.dumps(combined.features, indent=4))
 
     # plot_features(events_features=feature_dict)
     # df = pd.DataFrame.from_dict(feature_dict, orient="index")
