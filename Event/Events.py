@@ -223,8 +223,8 @@ class Event:
         """
         # Get binned photon counts
         time_counts, time_bins = self.get_bins(get_thresholded=True)
-        #[print(time_counts[i], time_bins[i]) for i in range(len(time_counts))]
-        
+        # [print(time_counts[i], time_bins[i]) for i in range(len(time_counts))]
+
         # Extract photon times and energies
         time_data = np.array([photon.time for photon in self.photons])
         energy_data = np.array([photon.energy for photon in self.photons])
@@ -235,7 +235,7 @@ class Event:
                 start_index = np.where(time_data == td)[0][0]
                 break
         for td in time_data:
-            if td >= time_bins[-1]+bin_size:
+            if td >= time_bins[-1] + bin_size:
                 end_index = np.where(time_data == td)[0][0] - 1
                 break
         time_data = time_data[start_index : end_index + 1]
@@ -286,39 +286,42 @@ class Event:
 
         self.features = features
         return features
-    def _get_peak_intensity(self, time_data:np.ndarray, energy_data: np.ndarray, time_bins: np.ndarray):
+
+    def _get_peak_intensity(
+        self, time_data: np.ndarray, energy_data: np.ndarray, time_bins: np.ndarray
+    ):
         """
         Calculates the peak intensity, defined as the maximum energy in the event.
         """
-        binsdict = {bin:[] for bin in time_bins}
+        binsdict = {bin: [] for bin in time_bins}
         for i in range(len(time_bins)):
             bin = time_bins[i]
             start = time_bins[i]
-            if i < len(time_bins) -1 :
-                end = time_bins[i+1]
+            if i < len(time_bins) - 1:
+                end = time_bins[i + 1]
             else:
                 end = float("inf")
-            #end = time_bins[i + 1] if len(time_bins) -i  >= 0 else float('inf')
+            # end = time_bins[i + 1] if len(time_bins) -i  >= 0 else float('inf')
             if i == len(time_bins) - 1:
                 photons_in_bin = time_data[(time_data >= start) & (time_data <= end)]
             else:
                 photons_in_bin = time_data[(time_data >= start) & (time_data < end)]
 
             binsdict[bin].append(photons_in_bin)
-        
-        energiesdict = {bin:[] for bin in time_bins}
+
+        energiesdict = {bin: [] for bin in time_bins}
         for bin, times in binsdict.items():
             for time in times:
                 timeidx = np.where(time_data == time)[0][0]
                 energy = energy_data[timeidx]
                 energiesdict[bin].append(energy)
         totalmax = 0
-        energysums = {bin:sum(energies) for bin, energies in energiesdict.items()}
+        energysums = {bin: sum(energies) for bin, energies in energiesdict.items()}
         max = max(energysums.values())
-        
+
         answerbin = [key for key in energysums if energysums[key] == max][0]
-        
-        #print(json.dumps(binsdict, indent=4))
+
+        # print(json.dumps(binsdict, indent=4))
         return answerbin
 
     def _get_time_statistics(self, time_data: np.ndarray) -> Tuple[float, float]:
