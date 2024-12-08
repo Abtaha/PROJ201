@@ -140,7 +140,6 @@ class Event:
             else np.ones_like(time_counts, dtype=bool)
         )
 
-        # Return the original bins and counts without filtering
         return time_counts[filtered_bins], time_bins[:-1][filtered_bins]
 
     def compute_threshold(self, max_time: int = 0, factor: int = 5) -> np.float64:
@@ -195,6 +194,7 @@ class Event:
             counts,  # Counts for the y-axis
             width=bin_size,
             color="skyblue",
+            align="edge",  # Align bars with edges
             edgecolor="black",
         )
 
@@ -223,8 +223,8 @@ class Event:
         """
         # Get binned photon counts
         time_counts, time_bins = self.get_bins(get_thresholded=True)
-        #[print(time_counts[i], time_bins[i]) for i in range(len(time_counts))]
-        
+        # [print(time_counts[i], time_bins[i]) for i in range(len(time_counts))]
+
         # Extract photon times and energies
         time_data = np.array([photon.time for photon in self.photons])
         energy_data = np.array([photon.energy for photon in self.photons])
@@ -235,7 +235,7 @@ class Event:
                 start_index = np.where(time_data == td)[0][0]
                 break
         for td in time_data:
-            if td >= time_bins[-1]+bin_size:
+            if td >= time_bins[-1] + bin_size:
                 end_index = np.where(time_data == td)[0][0] - 1
                 break
         time_data = time_data[start_index : end_index + 1]
@@ -265,7 +265,6 @@ class Event:
 
         # Total energy released and number of regions
         auc = self._get_total_energy_released(energy_data)
-        num_regions = self._get_number_of_regions(energy_data, peak_intensity)
 
         # Compile all features into a dictionary
         features = {
@@ -282,45 +281,47 @@ class Event:
             "Skewness": skewness,
             "Kurtosis": kurtosis,
             "Total Energy Released": auc,
-            "Number of Regions": num_regions,
             "Peak Time": peak_time,  # Include peak time in the features
         }
 
         self.features = features
         return features
-    def _get_peak_intensity(self, time_data:np.ndarray, energy_data: np.ndarray, time_bins: np.ndarray):
+
+    def _get_peak_intensity(
+        self, time_data: np.ndarray, energy_data: np.ndarray, time_bins: np.ndarray
+    ):
         """
         Calculates the peak intensity, defined as the maximum energy in the event.
         """
-        binsdict = {bin:[] for bin in time_bins}
+        binsdict = {bin: [] for bin in time_bins}
         for i in range(len(time_bins)):
             bin = time_bins[i]
             start = time_bins[i]
-            if i < len(time_bins) -1 :
-                end = time_bins[i+1]
+            if i < len(time_bins) - 1:
+                end = time_bins[i + 1]
             else:
                 end = float("inf")
-            #end = time_bins[i + 1] if len(time_bins) -i  >= 0 else float('inf')
+            # end = time_bins[i + 1] if len(time_bins) -i  >= 0 else float('inf')
             if i == len(time_bins) - 1:
                 photons_in_bin = time_data[(time_data >= start) & (time_data <= end)]
             else:
                 photons_in_bin = time_data[(time_data >= start) & (time_data < end)]
 
             binsdict[bin].append(photons_in_bin)
-        
-        energiesdict = {bin:[] for bin in time_bins}
+
+        energiesdict = {bin: [] for bin in time_bins}
         for bin, times in binsdict.items():
             for time in times:
                 timeidx = np.where(time_data == time)[0][0]
                 energy = energy_data[timeidx]
                 energiesdict[bin].append(energy)
         totalmax = 0
-        energysums = {bin:sum(energies) for bin, energies in energiesdict.items()}
+        energysums = {bin: sum(energies) for bin, energies in energiesdict.items()}
         max = max(energysums.values())
-        
+
         answerbin = [key for key in energysums if energysums[key] == max][0]
-        
-        #print(json.dumps(binsdict, indent=4))
+
+        # print(json.dumps(binsdict, indent=4))
         return answerbin
 
     def _get_time_statistics(self, time_data: np.ndarray) -> Tuple[float, float]:
@@ -387,18 +388,6 @@ class Event:
         Calculates the total energy released during the event, defined as the sum of the photon energies.
         """
         return np.sum(energy_data)
-
-    def _get_number_of_regions(
-        self, energy_data: np.ndarray, peak_intensity: float
-    ) -> int:
-        """
-        Calculates the number of distinct regions where photon intensity exceeds a threshold.
-        """
-        binary_signal = energy_data > self.threshold * peak_intensity
-        dilated_signal = binary_dilation(binary_signal)
-        eroded_signal = binary_erosion(binary_signal)
-        _, num_regions = label(dilated_signal)
-        return num_regions
 
 
 class EventList:
