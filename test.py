@@ -1,36 +1,84 @@
-import os
-import shutil
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
 
-# Source and destination directories
-source_dir = "sgr1935 Data Export Nov 27"
-destination_dir = "events 2"
-
-# Create destination directory if it doesn't exist
-if not os.path.exists(destination_dir):
-    os.mkdir(destination_dir)
-
-# Initialize a dictionary to hold files categorized by ID
-file_groups = {}
-
-# Categorize files by common ID
-for file in os.listdir(source_dir):
-    if file.endswith(".csv"):
-        parts = file.split("_")
-        if len(parts) > 1:  # Ensure there is an ID part
-            identifier = parts[1]
-            if identifier not in file_groups:
-                file_groups[identifier] = []
-            file_groups[identifier].append(os.path.join(source_dir, file))
+bin_size = 2
 
 
-# Copy files with the same ID to the destination folder with new names
-for i, (identifier, files) in enumerate(file_groups.items()):
-    for j, file in enumerate(files):
-        # Create new filenames based on the group index (e.g., 1.csv, 1s.csv)
-        suffix = "s" if "sb" in file else ""
-        new_filename = f"{i + 1}{suffix}.csv"
-        destination_path = os.path.join(destination_dir, new_filename)
-        print(new_filename, file)
+photon_times = np.array(
+    [
+        1,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+    ]
+)
 
-        # Copy the file to the destination folder
-        shutil.copy(file, destination_path)
+print(photon_times)
+
+# Compute bin edges based on photon times
+min_time, max_time = np.min(photon_times), np.max(photon_times)
+bin_edges = np.arange(min_time, max_time + bin_size, bin_size)
+
+# Compute histogram of photon counts
+time_counts, time_bins = np.histogram(photon_times, bins=bin_edges)
+
+
+filtered_bins = np.ones_like(time_counts, dtype=bool)
+
+counts, bins = time_counts[filtered_bins], time_bins[:-1][filtered_bins]
+
+print(time_counts, len(counts))
+print(time_bins, len(bins))
+
+print(time_bins[:-1])
+
+plt.bar(
+    time_bins[:-1],  # Left edges of the bins
+    time_counts,  # Photon counts
+    width=bin_size,  # Bar width matches bin size
+    align="edge",  # Align bars with edges
+    color="skyblue",
+    edgecolor="black",
+)
+plt.xticks(bin_edges)
+# If a threshold is provided, add a line to indicate the threshold
+plt.xlabel("Time")
+plt.ylabel("Number of Photons")
+plt.legend()
+plt.title("Photon Arrival Times (with Threshold)")
+plt.show()
+
+photons_per_bin = []
+
+for i in range(len(bin_edges) - 1):
+    start = bin_edges[i]
+    end = bin_edges[i + 1]
+
+    # Include the upper edge for the last bin
+    if i == len(bin_edges) - 2:
+        photons_in_bin = photon_times[(photon_times >= start) & (photon_times <= end)]
+    else:
+        photons_in_bin = photon_times[(photon_times >= start) & (photon_times < end)]
+
+    photons_per_bin.append(photons_in_bin)
+
+    print(start, end, photons_in_bin)

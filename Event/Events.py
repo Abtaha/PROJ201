@@ -140,7 +140,6 @@ class Event:
             else np.ones_like(time_counts, dtype=bool)
         )
 
-        # Return the original bins and counts without filtering
         return time_counts[filtered_bins], time_bins[:-1][filtered_bins]
 
     def compute_threshold(self, max_time: int = 0, factor: int = 5) -> np.float64:
@@ -195,6 +194,7 @@ class Event:
             counts,  # Counts for the y-axis
             width=bin_size,
             color="skyblue",
+            align="edge",  # Align bars with edges
             edgecolor="black",
         )
 
@@ -264,7 +264,6 @@ class Event:
 
         # Total energy released and number of regions
         auc = self._get_total_energy_released(energy_data)
-        num_regions = self._get_number_of_regions(energy_data, peak_intensity)
 
         # Compile all features into a dictionary
         features = {
@@ -281,7 +280,6 @@ class Event:
             "Skewness": skewness,
             "Kurtosis": kurtosis,
             "Total Energy Released": auc,
-            "Number of Regions": num_regions,
             "Peak Time": peak_time,  # Include peak time in the features
         }
 
@@ -358,18 +356,6 @@ class Event:
         Calculates the total energy released during the event, defined as the sum of the photon energies.
         """
         return np.sum(energy_data)
-
-    def _get_number_of_regions(
-        self, energy_data: np.ndarray, peak_intensity: float
-    ) -> int:
-        """
-        Calculates the number of distinct regions where photon intensity exceeds a threshold.
-        """
-        binary_signal = energy_data > self.threshold * peak_intensity
-        dilated_signal = binary_dilation(binary_signal)
-        eroded_signal = binary_erosion(binary_signal)
-        _, num_regions = label(dilated_signal)
-        return num_regions
 
 
 class EventList:
