@@ -3,6 +3,7 @@ from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+import itertools
 
 df = pd.read_csv("export_data.csv")
 print(df.head())
@@ -59,122 +60,67 @@ clusters = kmeans.fit_predict(df_scaled)
 
 df["Cluster"] = clusters
 
-pca = PCA(n_components=2)
+pca = PCA(n_components=3)
 df_pca = pca.fit_transform(df_scaled)
 
-plt.figure(figsize=(10, 6))
+# 3D plot
+fig = plt.figure(figsize=(10, 8))
+ax = fig.add_subplot(111, projection="3d")
+
+# Plot each cluster in a different color
 for cluster in range(optimal_k):
-    plt.scatter(
+    ax.scatter(
         df_pca[df["Cluster"] == cluster, 0],
         df_pca[df["Cluster"] == cluster, 1],
+        df_pca[df["Cluster"] == cluster, 2],
         label=f"Cluster {cluster}",
+        s=50,  # Size of points
     )
 
-# Mark cluster centroids
+# Mark the centroids in PCA space
 centroids_pca = pca.transform(kmeans.cluster_centers_)
-plt.scatter(
+ax.scatter(
     centroids_pca[:, 0],
     centroids_pca[:, 1],
+    centroids_pca[:, 2],
     s=200,
     c="black",
     marker="*",
     label="Centroids",
 )
 
-plt.xlabel("PCA Component 1")
-plt.ylabel("PCA Component 2")
-plt.legend()
-plt.title("Clusters Visualized in 2D (PCA)")
+# Labels and legend
+ax.set_xlabel("PCA Component 1")
+ax.set_ylabel("PCA Component 2")
+ax.set_zlabel("PCA Component 3")
+ax.legend()
+ax.set_title("3D Clusters Visualized with PCA")
 plt.show()
 
-# df = pd.read_csv("export_data.csv")
-# print(df.head())
+# pca = PCA(n_components=2)
+# df_pca = pca.fit_transform(df_scaled)
 #
-#
-# # duration | kurtosis
-# # duration | peak intensity
-# # duration | total energy
-# # skewness | kurtosis
-# # Skewness | total energy
-#
-# features = [
-#     # ['Duration', 'Peak Time'],
-#     # ['Duration', 'Kurtosis',],
-#     ["Duration", "Peak Intensity"],
-#     ["Duration", "Total Energy Released"],
-#     ["Skewness", "Kurtosis"],
-#     ["Skewness", "Total Energy Released"],
-#     ["Kurtosis", "Total Energy Released"],
-#     # ['Skewness', 'Peak Intensity'],
-#     # ['Kurtosis', 'Peak Intensity']
-# ]
-#
-# # fig, axes = plt.subplots(
-# #    len(features), 1
-# # )
-#
-#
-#
-# scaler = MinMaxScaler()
-#
-# for couple in features:
-#     x = couple[0]
-#     y = couple[1]
-#
-#     scaler.fit(df[[x]])
-#     df[x] = scaler.transform(df[[x]])
-#
-#     scaler.fit(df[[y]])
-#     df[y] = scaler.transform(df[[y]])
-#
-#     sse = []
-#     k_rng = range(1, 13)
-#     for k in k_rng:
-#         km = KMeans(n_clusters=k)
-#         km.fit(df[[x, y]])
-#         sse.append(km.inertia_)
-#
-#     threshold = max(sse) * 0.15
-#     optimal_k = -1
-#     for i in range(len(k_rng) - 1):
-#         diff = sse[i - 1] - sse[i]
-#         if abs(diff) < threshold:
-#             optimal_k = k_rng[i]
-#             break
-#
-#     print("Optimal k is", optimal_k, "with SSE", sse[i], "and threshold", threshold)
-#
-#     plt.xlabel("K")
-#     plt.ylabel("Sum of squared error")
-#     plt.plot(k_rng, sse)
-#     plt.show()
-#
-#     km = KMeans(n_clusters=optimal_k)
-#     y_predicted = km.fit_predict(df[[x, y]])
-#
-#     df["cluster"] = y_predicted
-#     df1 = df[df.cluster == 0]
-#     df2 = df[df.cluster == 1]
-#     df3 = df[df.cluster == 2]
-#     df4 = df[df.cluster == 3]
-#     df5 = df[df.cluster == 4]
-#     df6 = df[df.cluster == 5]
-#
-#     plt.scatter(df1[x], df1[y], color="green")
-#     plt.scatter(df2[x], df2[y], color="red")
-#     plt.scatter(df3[x], df3[y], color="blue")
-#     plt.scatter(df4[x], df4[y], color="black")
-#     plt.scatter(df5[x], df5[y], color="yellow")
-#     plt.scatter(df6[x], df6[y], color="cyan")
+# plt.figure(figsize=(10, 6))
+# for cluster in range(optimal_k):
 #     plt.scatter(
-#         km.cluster_centers_[:, 0],
-#         km.cluster_centers_[:, 1],
-#         color="purple",
-#         marker="*",
-#         label="centroid",
+#         df_pca[df["Cluster"] == cluster, 0],
+#         df_pca[df["Cluster"] == cluster, 1],
+#         label=f"Cluster {cluster}",
 #     )
-#     plt.xlabel(x)
-#     plt.ylabel(y)
-#     plt.legend()
-#     plt.show()
 #
+# # Mark cluster centroids
+# centroids_pca = pca.transform(kmeans.cluster_centers_)
+# plt.scatter(
+#     centroids_pca[:, 0],
+#     centroids_pca[:, 1],
+#     s=200,
+#     c="black",
+#     marker="*",
+#     label="Centroids",
+# )
+#
+# plt.xlabel("PCA Component 1")
+# plt.ylabel("PCA Component 2")
+# plt.legend()
+# plt.title("Clusters Visualized in 2D (PCA)")
+# plt.show()
