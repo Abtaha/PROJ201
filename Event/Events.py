@@ -60,7 +60,7 @@ class Event:
             list[Event]: A list of pulse events.
         """
         # Get binned photon counts and bins
-        time_counts, time_bins = self.get_bins(get_thresholded=True)
+        time_counts, time_bins = self.get_bins(get_thresholded=False)
 
         # Find the relevant range of photons based on the bins
         filtered_photons = [
@@ -94,13 +94,17 @@ class Event:
         bins = list(binsdict.keys())
         for i, bin in enumerate(bins):
             if binsdict[bin]:  # Check if the current bin has photons
-                current_pulse.extend(binsdict[bin])
+                #current_pulse.extend(binsdict[bin])
+                current_pulse.append(bin)
 
             # If it's the last bin or the next bin is not contiguous
             if i == len(bins) - 1 or round(bins[i + 1] - bin, 4) > bin_size:
-                if current_pulse:  # Add the collected photons as a pulse
-                    pulses.append(current_pulse)
-                    current_pulse = []  # Reset for the next pulse
+                if len(current_pulse) > 3:  # Add the collected photons as a pulse
+                        temp_list = []
+                        for bin in current_pulse:
+                            temp_list.extend(binsdict[bin])
+                        pulses.append(temp_list)
+                current_pulse = []  # Reset for the next pulse
 
         # Ensure any remaining pulse is added
         if current_pulse:
@@ -111,9 +115,6 @@ class Event:
             Event(photons, type="pulse", name=f"Pulse {i + 1}")
             for i, photons in enumerate(pulses)
         ]
-
-        if len(pulse_events) == 1:
-            return [self]
 
         return pulse_events
 
@@ -161,7 +162,7 @@ class Event:
 
         return time_counts[filtered_bins], time_bins[:-1][filtered_bins]
 
-    def compute_threshold(self, max_time: int = 0, factor: int = 5) -> np.float64:
+    def compute_threshold(self, max_time: int = 0, factor: int = 5, report_image=False) -> np.float64:
         """
         Compute a threshold for detecting bursts based on photon counts in time bins.
 
@@ -192,7 +193,12 @@ class Event:
         # Compute threshold based on mean + factor * standard deviation
         threshold = mean_counts + factor * std_counts
         self.threshold = threshold
-        return threshold
+        sigma = std_counts
+        mean = mean_counts
+        if report_image:
+            return threshold, sigma, mean
+        else:
+            return threshold
 
     def plot_event(self, bin_size=0.02):
         """
@@ -241,7 +247,13 @@ class Event:
                             energy-based features, and time-based features.
         """
         # Get binned photon counts and bins
-        time_counts, time_bins = self.get_bins(get_thresholded=True)
+
+        # PULSES CAN'T calculate threshold in them since they're already thresholded
+        if self.type == "pulse":
+            time_counts, time_bins = self.get_bins()
+        else:
+            time_counts, time_bins = self.get_bins(get_thresholded=True)
+
 
         # Find the relevant range of photons based on the bins
         filtered_photons = [
@@ -470,7 +482,7 @@ class EventList:
         )
         return self.combined
 
-    def plot_events_multiple_axes(self, labels=None, threshold=None, bin_size=0.02):
+    def plot_events_multiple_axes(self, labels=None, threshold=None, bin_size=0.02, sigma=None, mean=None, sigma5=None):
         events = (
             [self.main, self.sb, self.combined]
             if self.combined
@@ -502,9 +514,21 @@ class EventList:
                 color="skyblue",
                 alpha=0.7,
             )
-            if threshold is not None:
+            if threshold != 0:
                 axes[i].axhline(
                     threshold, color="red", linestyle="--", label="Threshold"
+                )
+            if sigma is not None:
+                axes[i].axhline(
+                    sigma, color="green", linestyle="--", label="Sigma"
+                )
+            if mean is not None:
+                axes[i].axhline(
+                    mean, color="black", linestyle="--", label="Mean"
+                )
+            if sigma5 is not None:
+                axes[i].axhline(
+                    sigma5, color="orange", linestyle="--", label="5 Sigma"
                 )
             axes[i].set_title(label, fontsize=10)
             axes[i].set_ylabel("Count", fontsize=8)

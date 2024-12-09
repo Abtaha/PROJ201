@@ -38,7 +38,7 @@ plt.title("Elbow Method for Optimal k")
 plt.show()
 
 
-threshold = max(sse) * 0.01
+threshold = max(sse) * 0.04
 optimal_k = -1
 
 for k in k_rng:
