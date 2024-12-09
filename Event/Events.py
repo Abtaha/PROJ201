@@ -87,10 +87,6 @@ class Event:
                 if start <= photon.time < end:
                     binsdict[start].append(photon)
 
-        for i in range(len(time_bins) - 1):
-            print(list(binsdict.keys())[i] == time_bins[i])
-            print(len(list(binsdict.values())[i]) == time_counts[i])
-
         # Extract pulses as contiguous regions of non-empty bins
         pulses = []
         current_pulse = []

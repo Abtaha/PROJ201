@@ -49,9 +49,9 @@ if __name__ == "__main__":
 
     events_list: list[EventList] = []
     x = [22]
-    for i in range(1, 21):
-        main_event = read_event(f"events/{i}.csv", "main")
-        sb_event = read_event(f"events/{i}s.csv", "sb")
+    for i in range(1, 82):
+        main_event = read_event(f"events 2/{i}.csv", "main")
+        sb_event = read_event(f"events 2/{i}s.csv", "sb")
         events_list.append(EventList(main_event, sb_event))
 
     feature_dict = {}
