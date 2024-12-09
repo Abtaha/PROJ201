@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     events_list: list[EventList] = []
     x = [22]
-    for i in range(1, 82):
+    for i in range(5, 82):
         main_event = read_event(f"events/{i}.csv", "main")
         sb_event = read_event(f"events/{i}s.csv", "sb")
         events_list.append(EventList(main_event, sb_event))
@@ -61,7 +61,7 @@ if __name__ == "__main__":
         combined = events.combine_events()
         threshold, sigma, mean = combined.compute_threshold(report_image=True)
         
-        #events.plot_events_multiple_axes(bin_size=BIN_SIZE, threshold=threshold, sigma=sigma, mean=mean, sigma5=sigma*5)
+        events.plot_events_multiple_axes(bin_size=BIN_SIZE, threshold=threshold, sigma=sigma, mean=mean, sigma5=sigma*5)
 
         a = combined.get_bins()
 
@@ -72,7 +72,7 @@ if __name__ == "__main__":
         for pulse in pulses:
             pulse_counter += 1
             print("NEW EVENT")
-            feature_dict[i] = pulse.extract_features()
+            #feature_dict[i] = pulse.extract_features()
             i+=1
             #pulse.plot_event()
 
@@ -90,7 +90,7 @@ if __name__ == "__main__":
         #feature_dict[i + 1] = combined.extract_features()
         #print(json.dumps(combined.features, indent=4))
 
-    # plot_features(events_features=feature_dict)
+    plot_features(events_features=feature_dict)
     #df = pd.DataFrame.from_dict(feature_dict, orient="index")
     #df.to_csv("export_data.csv")
     print(pulse_counter)
