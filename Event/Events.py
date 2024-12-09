@@ -38,11 +38,14 @@ class Event:
     #     # "Number of Regions": None,
     # }
 
-    def __init__(self, photons, type, name="Unnamed", threshold: int = 0):
+    def __init__(
+        self, photons, type, name="Unnamed", threshold: int = 0, bin_size: float = 0.002
+    ):
         self.photons = photons
         self.type = type
         self.name = name
 
+        self.bin_size = bin_size
         self.threshold = threshold
         self.features = {}
 
@@ -52,7 +55,7 @@ class Event:
     def __repr__(self):
         return self.__str__()
 
-    def split_pulses(self, bin_size=0.02) -> list:
+    def split_pulses(self) -> list:
         """
         Split the event into pulses based on photon count exceeding the threshold.
 
@@ -66,7 +69,7 @@ class Event:
         filtered_photons = [
             photon
             for photon in self.photons
-            if time_bins[0] <= photon.time < time_bins[-1] + bin_size
+            if time_bins[0] <= photon.time < time_bins[-1] + self.bin_size
         ]
 
         # Ensure we have photons in the filtered range
@@ -81,7 +84,9 @@ class Event:
         # Group photons into bins
         for i in range(len(time_bins)):
             start = time_bins[i]
-            end = time_bins[i] + bin_size if i < len(time_bins) - 1 else float("inf")
+            end = (
+                time_bins[i] + self.bin_size if i < len(time_bins) - 1 else float("inf")
+            )
 
             for photon in filtered_photons:
                 if start <= photon.time < end:
@@ -97,7 +102,7 @@ class Event:
                 current_pulse.extend(binsdict[bin])
 
             # If it's the last bin or the next bin is not contiguous
-            if i == len(bins) - 1 or round(bins[i + 1] - bin, 4) > bin_size:
+            if i == len(bins) - 1 or round(bins[i + 1] - bin, 4) > self.bin_size:
                 if current_pulse:  # Add the collected photons as a pulse
                     pulses.append(current_pulse)
                     current_pulse = []  # Reset for the next pulse
@@ -121,7 +126,6 @@ class Event:
         self,
         get_thresholded: bool = True,
         max_time: float = float("inf"),
-        bin_size: float = 0.02,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Group photons into time bins or filter bins based on the threshold.
@@ -129,7 +133,6 @@ class Event:
         Parameters:
         - get_thresholded (bool): If True, return only bins where counts > threshold.
         - max_time (float): Maximum time for photons to be included in the binning (default is -inf).
-        - bin_size (float): Size of each bin (default 0.02).
 
         Returns:
         - time_counts (np.ndarray): Counts of photons in each bin.
@@ -148,7 +151,7 @@ class Event:
 
         # Compute bin edges based on photon times
         min_time, max_time = np.min(photon_times), np.max(photon_times)
-        bin_edges = np.arange(min_time, max_time + bin_size, bin_size)
+        bin_edges = np.arange(min_time, max_time + self.bin_size, self.bin_size)
 
         # Compute histogram of photon counts
         time_counts, time_bins = np.histogram(photon_times, bins=bin_edges)
@@ -162,7 +165,7 @@ class Event:
         return time_counts[filtered_bins], time_bins[:-1][filtered_bins]
 
     def compute_threshold(
-        self, max_time: int = 0, factor: int = 5, report_image=False
+        self, max_time: int = 0, factor: int = 5
     ) -> Tuple[np.float64, np.float64, np.float64]:
         """
         Compute a threshold for detecting bursts based on photon counts in time bins.
@@ -177,7 +180,7 @@ class Event:
         Returns:
             np.float64: The computed threshold value.
         """
-        time_counts, time_bins = self.get_bins(get_thresholded=False, max_time=max_time)
+        time_counts, _ = self.get_bins(get_thresholded=False, max_time=max_time)
 
         # Background noise detection
         # background_bins_idx = []
@@ -198,24 +201,22 @@ class Event:
         mean = mean_counts
         return threshold, sigma, mean
 
-    def plot_event(self, bin_size=0.02):
+    def plot_event(self):
         """
         Plot the events based on a threshold, focusing on photon times.
         Exclude bins with fewer photons than the threshold.
 
-        Parameters:
-        - bin_size: float, the size of the time bins for histogramming (default is 0.02)
         """
 
         counts, bins = self.get_bins(
-            get_thresholded=True if self.threshold > 0 else False, bin_size=bin_size
+            get_thresholded=True if self.threshold > 0 else False
         )
 
         # Plot only the bins that exceed the threshold
         plt.bar(
             bins,  # Bin edges for the x-axis
             counts,  # Counts for the y-axis
-            width=bin_size,
+            width=self.bin_size,
             color="skyblue",
             align="edge",  # Align bars with edges
             edgecolor="black",
@@ -233,12 +234,9 @@ class Event:
         plt.title("Photon Arrival Times (with Threshold)")
         plt.show()
 
-    def extract_features(self, bin_size=0.02) -> Dict[str, float]:
+    def extract_features(self) -> Dict[str, float]:
         """
         Extracts relevant features from the light curve based on photon time and energy.
-
-        Parameters:
-        - peak_time (float, optional): Time of the peak event if known; otherwise, the peak is calculated.
 
         Returns:
         - features (dict): Dictionary of extracted features including rise time, decay time, duration,
@@ -256,7 +254,7 @@ class Event:
         filtered_photons = [
             photon
             for photon in self.photons
-            if time_bins[0] <= photon.time < time_bins[-1] + bin_size
+            if time_bins[0] <= photon.time < time_bins[-1] + self.bin_size
         ]
 
         # Ensure we have photons in the filtered range
@@ -483,7 +481,7 @@ class EventList:
         self,
         labels=None,
         threshold=None,
-        bin_size=0.02,
+        bin_size=0.01,
         sigma=None,
         mean=None,
         sigma5=None,

@@ -19,34 +19,7 @@ def read_event(filename, type):
     return Event(photons, type, filename)
 
 
-def plot_features(events_features: dict) -> None:
-    # For every frature in existing features
-    for i, feature in enumerate(events_features[1].keys()):
-        event_ids = [event_id for event_id, features in events_features.items()]
-        values = [features[feature] for event_id, features in events_features.items()]
-        plt.bar(
-            event_ids,  # Bin edges for the x-axis
-            values,  # Counts for the y-axis
-            width=0.5,
-            color="coral",
-            edgecolor="black",
-        )
-
-        plt.xlabel("Event ID")
-        # ylabel = feature
-        # if Event.features[feature] != None:
-        #     unit = Event.features[feature]
-        #     ylabel += f" ({unit})"
-        plt.xticks(range(1, len(event_ids) + 1))
-        # plt.ylabel(ylabel)
-        plt.legend()
-        plt.title(f"Comparison of Events based on {feature}")
-        plt.show()
-
-
 if __name__ == "__main__":
-    BIN_SIZE = 0.02
-
     events_list: list[EventList] = []
     x = [22]
     for i in range(5, 82):
@@ -58,8 +31,6 @@ if __name__ == "__main__":
     feature_dict = {}
     for events in events_list:
         combined = events.combine_events()
-        threshold, sigma, mean = combined.compute_threshold()
-
         pulses = combined.split_pulses()
 
         pulse_counter = 0
@@ -71,6 +42,8 @@ if __name__ == "__main__":
                 continue
 
             feature_dict[i] = pulse.extract_features()
+
             i += 1
 
-    plot_features(events_features=feature_dict)
+    df = pd.DataFrame.from_dict(feature_dict, orient="index")
+    df.to_csv("export_data.csv")
