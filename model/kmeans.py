@@ -7,10 +7,15 @@ import itertools
 
 df = pd.read_csv("export_data.csv")
 print(df.head())
+for col in df.columns:
+    print(col)
+    print(df[col])
 
 features = [
     "Duration",
     "Peak Intensity",
+    "Peak Energy Bin",
+    "Peak Energy In Bin",
     "Skewness",
     "Kurtosis",
     "Rise Time",
@@ -24,8 +29,9 @@ features = [
 scaler = MinMaxScaler()
 df_scaled = scaler.fit_transform(df[features])
 
+
 sse = []
-k_rng = range(1, 30)
+k_rng = range(1, len(df) - 1)
 for k in k_rng:
     km = KMeans(n_clusters=k, random_state=42)
     km.fit(df_scaled)
@@ -39,7 +45,7 @@ plt.title("Elbow Method for Optimal k")
 plt.show()
 
 
-threshold = max(sse) * 0.04
+threshold = max(sse) * 0.01
 optimal_k = -1
 
 for k in k_rng:
@@ -47,13 +53,13 @@ for k in k_rng:
         continue
 
     diff = sse[k - 1] - sse[k]
-    print(diff, threshold)
     if abs(diff) < threshold:
         optimal_k = k
         break
 
 # optimal_k = 4
-print("optimal", optimal_k)
+print("Optimal k:", optimal_k)
+
 
 kmeans = KMeans(n_clusters=optimal_k, random_state=42)
 clusters = kmeans.fit_predict(df_scaled)

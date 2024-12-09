@@ -54,28 +54,32 @@ if __name__ == "__main__":
         sb_event = read_event(f"events/{i}s.csv", "sb")
         events_list.append(EventList(main_event, sb_event))
 
+    i = 1
     feature_dict = {}
-    i=1
-    pulse_counter = 0
     for events in events_list:
         combined = events.combine_events()
         threshold, sigma, mean = combined.compute_threshold(report_image=True)
-        
-        events.plot_events_multiple_axes(bin_size=BIN_SIZE, threshold=threshold, sigma=sigma, mean=mean, sigma5=sigma*5)
 
-        a = combined.get_bins()
+        # events.plot_events_multiple_axes(bin_size=BIN_SIZE, threshold=threshold, sigma=sigma, mean=mean, sigma5=sigma*5)
 
-        #combined.plot_event()
+        # combined.plot_event()
 
         pulses = combined.split_pulses()
 
+        pulse_counter = 0
         for pulse in pulses:
             pulse_counter += 1
-            print("NEW EVENT")
-            #feature_dict[i] = pulse.extract_features()
-            i+=1
-            #pulse.plot_event()
+            counts, bins = pulse.get_bins(get_thresholded=False)
+            print(counts, bins)
+            print(bins)
 
+            if len(bins) <= 3:
+                continue
+
+            feature_dict[i] = pulse.extract_features()
+            # pulse.plot_event()
+
+            i += 1
 
         # pulses = combined.find_pulses(threshold=threshold, bin_size=BIN_SIZE)
 
@@ -87,10 +91,9 @@ if __name__ == "__main__":
 
         # events.plot_events_multiple_axes(bin_size=BIN_SIZE)
         # combined.plot_event(bin_size=BIN_SIZE)
-        #feature_dict[i + 1] = combined.extract_features()
-        #print(json.dumps(combined.features, indent=4))
+        # feature_dict[i + 1] = combined.extract_features()
+        # print(json.dumps(combined.features, indent=4))
 
     plot_features(events_features=feature_dict)
-    #df = pd.DataFrame.from_dict(feature_dict, orient="index")
-    #df.to_csv("export_data.csv")
-    print(pulse_counter)
+    df = pd.DataFrame.from_dict(feature_dict, orient="index")
+    df.to_csv("export_data.csv")
