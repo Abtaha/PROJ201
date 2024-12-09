@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import numpy as np
 
-from Event.Events import Event, EventList, Photon
+from Event.Event import Event, EventList, Photon
 
 
 def read_event(filename, type):
@@ -69,6 +69,8 @@ if __name__ == "__main__":
 
             if len(bins) <= 3:
                 continue
+
+            pulse.plot_event()
 
             feature_dict[i] = pulse.extract_features()
             i += 1
