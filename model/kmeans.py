@@ -14,15 +14,15 @@ for col in df.columns:
 features = [
     "Duration",
     "Peak Intensity",
-    "Peak Energy Bin",
-    "Peak Energy In Bin",
+    #"Peak Energy Bin",
+    #"Peak Energy In Bin",
     "Skewness",
-    "Kurtosis",
+    #"Kurtosis",
     "Rise Time",
-    "Decay Time",
-    "Centroid",
-    "Skewness",
-    "Kurtosis",
+    #"Decay Time",
+    #"Centroid",
+    #"Skewness",
+    #"Kurtosis",
     "Total Energy Released",
 ]
 
@@ -31,21 +31,16 @@ df_scaled = scaler.fit_transform(df[features])
 
 
 sse = []
-k_rng = range(1, len(df) - 1)
+k_rng = range(1, 15)
 for k in k_rng:
     km = KMeans(n_clusters=k, random_state=42)
     km.fit(df_scaled)
     sse.append(km.inertia_)
 
-plt.figure(figsize=(10, 6))
-plt.plot(k_rng, sse, marker="o")
-plt.xlabel("Number of clusters (k)")
-plt.ylabel("Sum of squared errors (SSE)")
-plt.title("Elbow Method for Optimal k")
-plt.show()
 
 
-threshold = max(sse) * 0.01
+
+#threshold = max(sse) * 0.01
 optimal_k = -1
 
 for k in k_rng:
@@ -53,13 +48,21 @@ for k in k_rng:
         continue
 
     diff = sse[k - 1] - sse[k]
-    if abs(diff) < threshold:
+    if abs(diff) < sse[k]*0.25:
         optimal_k = k
         break
 
 # optimal_k = 4
 print("Optimal k:", optimal_k)
 
+plt.figure(figsize=(10, 6))
+plt.plot(k_rng, sse, marker="o")
+plt.xlabel("Number of clusters (k)")
+plt.ylabel("Sum of squared errors (SSE)")
+plt.title("Elbow Method for Optimal k")
+plt.axvline(optimal_k, color="red", linestyle='--', label="Optimal k")
+plt.legend()
+plt.show()
 
 kmeans = KMeans(n_clusters=optimal_k, random_state=42)
 clusters = kmeans.fit_predict(df_scaled)
