@@ -21,8 +21,6 @@ features = [
     "Rise Time",
     #"Decay Time",
     #"Centroid",
-    #"Skewness",
-    #"Kurtosis",
     "Total Energy Released",
 ]
 
@@ -48,7 +46,7 @@ for k in k_rng:
         continue
 
     diff = sse[k - 1] - sse[k]
-    if abs(diff) < sse[k]*0.25:
+    if abs(diff) < sse[k-1]*0.15:
         optimal_k = k
         break
 
@@ -60,6 +58,7 @@ plt.plot(k_rng, sse, marker="o")
 plt.xlabel("Number of clusters (k)")
 plt.ylabel("Sum of squared errors (SSE)")
 plt.title("Elbow Method for Optimal k")
+plt.xticks(range(1, len(k_rng)+1))
 plt.axvline(optimal_k, color="red", linestyle='--', label="Optimal k")
 plt.legend()
 plt.show()
