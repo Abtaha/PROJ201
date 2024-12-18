@@ -4,27 +4,84 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 import itertools
+import json
+
+def auto_elbow_search(data, k_range):
+    wcss = []
+    K = range(1,k_range)
+    for no_of_clusters in K:
+        k_model = KMeans(n_clusters = no_of_clusters)
+        k_model.fit(data)
+        wcss.append(k_model.inertia_)
+        
+    
+    
+    #function to calculate distance from a and b in 2-d
+    def calc_distance(x1,y1,a,b,c):
+        import math
+        d = abs((a* x1 + b* y1 +c))/ (math.sqrt(a *a+b *b))
+        return d
+
+    a = wcss[0] - wcss[8]
+    b = K[8]-K[0] 
+    c1 = K[0] * wcss[8]
+    c2 = K[8] * wcss[0]
+    c = c1-c2
+
+             
+    distance_of_points_from_line = []
+    for k in range(9):
+        distance_of_points_from_line.append(calc_distance(K[k],
+                                                          wcss[k],a,b,c))
+        result = distance_of_points_from_line.index(max(distance_of_points_from_line))+1
+    
+    return result
+
 
 df = pd.read_csv("export_data.csv")
-print(df.head())
-for col in df.columns:
-    print(col)
-    print(df[col])
+#print(df.head())
+#for col in df.columns:
+#    print(col)
+#    print(df[col])
+
 
 features = [
     "Duration",
     "Peak Intensity",
-    #"Peak Energy Bin",
-    #"Peak Energy In Bin",
+    "Peak Energy Bin",
+    "Peak Energy In Bin",
     "Skewness",
-    #"Kurtosis",
+    "Kurtosis",
     "Rise Time",
-    #"Decay Time",
-    #"Centroid",
+    "Decay Time",
+    "Centroid",
     "Total Energy Released",
 ]
-
 scaler = MinMaxScaler()
+
+def find_distinct_features(flist, scaler):
+    combinations = list(itertools.combinations(flist, 5))
+    combinations = {x:None for x in combinations}
+    print(f"Total combinations: {len(combinations)}")
+
+    for i, comb in enumerate(combinations.keys()):
+        df_scaled = scaler.fit_transform(df[list(comb)])
+        optimal_k = auto_elbow_search(df_scaled, 15)
+        combinations[comb] = optimal_k
+
+    combinations = {"-".join(key):val for key, val in combinations.items()}
+    sorted_combs = dict(sorted(combinations.items(), key=lambda item: item[1]))
+    print(json.dumps(sorted_combs, indent=4))
+    return sorted_combs
+
+sorted = find_distinct_features(features, scaler)
+most_features = list(sorted)[-1]
+most_k_val = sorted[most_features]
+optimal_k = most_k_val
+features = most_features.split("-")
+print("\nOne of the feature combination that has the most distinct clustering: ")
+for i in features:
+    print(i)
 df_scaled = scaler.fit_transform(df[features])
 
 
@@ -35,12 +92,8 @@ for k in k_rng:
     km.fit(df_scaled)
     sse.append(km.inertia_)
 
-
-
-
 #threshold = max(sse) * 0.01
-optimal_k = -1
-
+"""
 for k in k_rng:
     if k == 0:
         continue
@@ -49,9 +102,9 @@ for k in k_rng:
     if abs(diff) < sse[k-1]*0.15:
         optimal_k = k
         break
+"""
 
-# optimal_k = 4
-print("Optimal k:", optimal_k)
+print("\n\nOptimal k:", optimal_k)
 
 plt.figure(figsize=(10, 6))
 plt.plot(k_rng, sse, marker="o")
