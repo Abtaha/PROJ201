@@ -18,6 +18,9 @@ def read_event(filename, type):
             photons.append(Photon(e, t))
     return Event(photons, type, filename)
 
+def export_features(feature_dict: dict) -> None:
+    df = pd.DataFrame.from_dict(feature_dict, orient="index")
+    df.to_csv("export_data.csv")
 
 def plot_features(events_features: dict) -> None:
     # For every frature in existing features
@@ -49,7 +52,7 @@ if __name__ == "__main__":
 
     events_list: list[EventList] = []
     x = [22]
-    for i in range(5, 82):
+    for i in range(1, 102):
         main_event = read_event(f"events/{i}.csv", "main")
         sb_event = read_event(f"events/{i}s.csv", "sb")
         events_list.append(EventList(main_event, sb_event))
@@ -70,9 +73,10 @@ if __name__ == "__main__":
             if len(bins) <= 3:
                 continue
 
-            pulse.plot_event()
+            #pulse.plot_event()
 
             feature_dict[i] = pulse.extract_features()
             i += 1
 
-    plot_features(events_features=feature_dict)
+    export_features(feature_dict)
+    plot_features(feature_dict)
