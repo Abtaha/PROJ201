@@ -434,17 +434,18 @@ class Event:
         interval = [np.where(time_bins == bin)[0][0] for bin in time_bins if tstart <= bin < tend]
         int_bins = [time_bins[i] for i in interval]
         int_counts = [time_counts[i] for i in interval]
-        print(max(int_counts))
-        print(np.where(int_counts == max(int_counts))[0])
-        print(int_counts)
+        #print(max(int_counts))
+        #print(np.where(int_counts == max(int_counts))[0])
+        #print(int_counts)
         index_list = np.where(int_counts == max(int_counts))[0] 
         # Our last solution not to make rise_time zero...
         peak_index = index_list[0] if len(index_list) == 1 else index_list[1]
-        print(peak_index)
+        #print(peak_index)
         peak_bin = int_bins[peak_index]
         rise_time = peak_bin - first_time
-        print(rise_time)
+        #print(rise_time)
         return rise_time
+
     def dset(self):
         pass
 
