@@ -50,8 +50,6 @@ def plot_features(events_features: dict) -> None:
 
 
 if __name__ == "__main__":
-    BIN_SIZE = 0.02
-
     events_list: list[EventList] = []
     x = [22]
     for i in range(1, 102):
@@ -61,28 +59,33 @@ if __name__ == "__main__":
 
     i = 1
     feature_dict = {}
-    for events in events_list:
+    for event_counter, events in enumerate(events_list):
         combined = events.combine_events()
         threshold, sigma, mean = combined.compute_threshold()
 
         pulses = combined.split_pulses()
 
-        pulse_counter = 0
+        pulse_counter = 1
         for pulse in pulses:
-            pulse_counter += 1
             counts, bins = pulse.get_bins(get_thresholded=False)
-
             if len(bins) <= 3:
                 continue
 
-            # pulse.plot_event()
+            print(f"Event: {event_counter+1} | Pulse: {pulse_counter}")
+            pulse_counter += 1
 
             features = pulse.extract_features()
+            if features["Rise Time"] == 0:
+                first_bin_start,first_bin_end = bins[0], bins[1]
+                features["Rise Time"] = combined.rset(first_bin_start,first_bin_end)
+            if features["Decay Time"] == 0:
+                reversed = bins.reverse()
+                last_bin_end,last_bin_start = reversed[0], reversed[1]
+                combined.dset(last_bin_end,last_bin_start)    
+
             feature_dict[i] = features
 
-            if features["Rise Time"] < 0.001:
-                pulse.plot_event()
             i += 1
 
-    # export_features(feature_dict)
-    # plot_features(feature_dict)
+    export_features(feature_dict)
+    #plot_features(feature_dict)

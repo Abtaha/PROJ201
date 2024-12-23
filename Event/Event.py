@@ -39,7 +39,7 @@ class Event:
     # }
 
     def __init__(
-        self, photons, type, name="Unnamed", threshold: int = 0, bin_size: float = 0.001
+        self, photons, type, name="Unnamed", threshold: int = 0, bin_size: float = 0.002
     ):
         self.photons = photons
         self.type = type
@@ -126,6 +126,7 @@ class Event:
         self,
         get_thresholded: bool = True,
         max_time: float = float("inf"),
+        bin_size: float = 1
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Group photons into time bins or filter bins based on the threshold.
@@ -138,6 +139,8 @@ class Event:
         - time_counts (np.ndarray): Counts of photons in each bin.
         - time_bins (np.ndarray): Bin edges.
         """
+        if bin_size == 1:
+            bin_size = self.bin_size
         if not self.photons:
             raise ValueError("No photons provided for binning.")
 
@@ -151,7 +154,7 @@ class Event:
 
         # Compute bin edges based on photon times
         min_time, max_time = np.min(photon_times), np.max(photon_times)
-        bin_edges = np.arange(min_time, max_time + self.bin_size, self.bin_size)
+        bin_edges = np.arange(min_time, max_time + bin_size, bin_size)
 
         # Compute histogram of photon counts
         time_counts, time_bins = np.histogram(photon_times, bins=bin_edges)
@@ -180,7 +183,7 @@ class Event:
         Returns:
             np.float64: The computed threshold value.
         """
-        time_counts, _ = self.get_bins(get_thresholded=False, max_time=max_time)
+        time_counts, _ = self.get_bins(get_thresholded=False, max_time=max_time, bin_size=0.002)
 
         # Background noise detection
         # background_bins_idx = []
@@ -283,6 +286,7 @@ class Event:
         rise_time, decay_time = self._get_rise_decay_time(
             time_bins, time_counts, photon_times, photon_energies
         )
+
         duration = self._get_duration(photon_times)
 
         # Centroid, skewness, and kurtosis for time data
@@ -420,6 +424,30 @@ class Event:
         Calculates the total energy released during the event, defined as the sum of the photon energies.
         """
         return np.sum(energy_data)
+
+    def rset(self, tstart, tend):
+        # BRO DON'T CHANGE max() functions to something else please.
+        # argmax doesnt work properly and I don't want to deal with problems.
+        photon_times = np.array([photon.time for photon in self.photons])
+        first_time = photon_times[next(x[0] for x in enumerate(photon_times) if x[1] >= tstart)]
+        time_counts, time_bins = self.get_bins(get_thresholded=False, bin_size=0.0005)
+        interval = [np.where(time_bins == bin)[0][0] for bin in time_bins if tstart <= bin < tend]
+        int_bins = [time_bins[i] for i in interval]
+        int_counts = [time_counts[i] for i in interval]
+        print(max(int_counts))
+        print(np.where(int_counts == max(int_counts))[0])
+        print(int_counts)
+        index_list = np.where(int_counts == max(int_counts))[0] 
+        # Our last solution not to make rise_time zero...
+        peak_index = index_list[0] if len(index_list) == 1 else index_list[1]
+        print(peak_index)
+        peak_bin = int_bins[peak_index]
+        rise_time = peak_bin - first_time
+        print(rise_time)
+        return rise_time
+    def dset(self):
+        pass
+
 
 
 class EventList:
