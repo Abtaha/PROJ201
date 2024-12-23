@@ -3,6 +3,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import KMeans
 import pandas as pd
 import numpy as np
+import seaborn as sns
 import matplotlib.pyplot as plt
 from kneed import KneeLocator
 
@@ -89,7 +90,6 @@ optimal_k = kneedle.knee
 if not optimal_k:
     optimal_k = 4
 
-
 # Plot the elbow curve
 plt.figure(figsize=(10, 6))
 plt.plot(k_rng, sse, marker="o")
@@ -143,3 +143,44 @@ ax.set_zlabel("PCA Component 3")
 ax.legend()
 ax.set_title("3D Clusters Visualized with PCA")
 plt.show()
+
+
+# Compute summary statistics for each cluster
+cluster_summary = df.groupby("Cluster")[features].agg(["mean", "std"])
+print("\nCluster Summary (Mean and Std):")
+print(cluster_summary)
+
+
+# Visualize the distribution of top features
+for feature in top_5_features:
+    plt.figure(figsize=(8, 6))
+    sns.boxplot(x="Cluster", y=feature, data=df)
+    plt.title(f"{feature} by Cluster")
+    plt.xlabel("Cluster")
+    plt.ylabel(feature)
+    plt.show()
+
+
+# Pairwise visualization of top features with clusters
+sns.pairplot(df, hue="Cluster", vars=top_5_features, palette="Set2", diag_kind="kde")
+plt.suptitle("Pairwise Plot of Top Features by Cluster", y=1.02)
+plt.show()
+
+
+# Transform centroids back to original feature space
+centroids_original = scaler.inverse_transform(kmeans.cluster_centers_)
+
+# Create a DataFrame for easier interpretation
+centroids_df = pd.DataFrame(centroids_original, columns=top_5_features)
+centroids_df["Cluster"] = range(optimal_k)
+print("\nCluster Centroids in Original Feature Space:")
+print(centroids_df)
+
+from scipy.stats import f_oneway
+
+# Perform ANOVA for each top feature
+print("\nANOVA Results:")
+for feature in top_5_features:
+    groups = [df[df["Cluster"] == cluster][feature] for cluster in range(optimal_k)]
+    f_stat, p_value = f_oneway(*groups)
+    print(f"{feature}: F-statistic = {f_stat:.4f}, p-value = {p_value:.4e}")
