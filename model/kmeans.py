@@ -9,26 +9,7 @@ from kneed import KneeLocator
 # Load the dataset
 df = pd.read_csv("export_data.csv")
 
-# # Define the features
-# features = [
-#     "Duration",
-#     "Peak Intensity",
-#     "Peak Energy Bin",
-#     "Peak Energy In Bin",
-#     "Skewness",
-#     "Kurtosis",
-#     "Centroid",
-#     "Rise Time",
-#     "Decay Time",
-#     "Mean Time",
-#     "Std Time",
-#     "Peak Time",
-#     "Mean Energy",
-#     "Std Energy",
-#     "Total Energy Released",
-# ]
-
-
+# Define the features
 features = [
     "Duration",
     "Peak Intensity",
@@ -36,11 +17,30 @@ features = [
     "Peak Energy In Bin",
     "Skewness",
     "Kurtosis",
+    "Centroid",
     "Rise Time",
     "Decay Time",
-    "Centroid",
+    "Mean Time",
+    "Std Time",
+    "Peak Time",
+    "Mean Energy",
+    "Std Energy",
     "Total Energy Released",
 ]
+
+
+# features = [
+#     "Duration",
+#     "Peak Intensity",
+#     "Peak Energy Bin",
+#     "Peak Energy In Bin",
+#     "Skewness",
+#     "Kurtosis",
+#     "Rise Time",
+#     "Decay Time",
+#     "Centroid",
+#     "Total Energy Released",
+# ]
 
 # Scale the data
 scaler = MinMaxScaler()
@@ -53,6 +53,8 @@ def pca_feature_ranking(data, feature_names):
     pca.fit(data)
     # Calculate feature importance as the sum of absolute contributions to all principal components
     feature_importance = np.abs(pca.components_).sum(axis=0)
+    print(np.abs(pca.components_))
+    print(np.abs(pca.components_).sum(axis=0))
     feature_ranking = sorted(
         zip(feature_names, feature_importance), key=lambda x: x[1], reverse=True
     )
@@ -86,6 +88,7 @@ optimal_k = kneedle.knee
 
 if not optimal_k:
     optimal_k = 4
+
 
 # Plot the elbow curve
 plt.figure(figsize=(10, 6))

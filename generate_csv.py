@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import numpy as np
 
-from Event.Events import Event, EventList, Photon
+from Event.Event import Event, EventList, Photon
 
 
 def read_event(filename, type):

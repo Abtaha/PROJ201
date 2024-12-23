@@ -39,7 +39,7 @@ class Event:
     # }
 
     def __init__(
-        self, photons, type, name="Unnamed", threshold: int = 0, bin_size: float = 0.002
+        self, photons, type, name="Unnamed", threshold: int = 0, bin_size: float = 0.001
     ):
         self.photons = photons
         self.type = type
