@@ -34,10 +34,10 @@ features = [
     #"Peak Intensity",
     #"Peak Energy Bin",
     #"Peak Energy In Bin",
-    #"Skewness",
+    "Skewness",
     #"Kurtosis",
     "Rise Time",
-    "Decay Time",
+    #"Decay Time",
     #"Centroid",
     #"Total Energy Released",
 ]
@@ -135,9 +135,10 @@ ax.scatter(
 )
 
 # Labels and legend
-ax.set_xlabel("Duration")
-ax.set_ylabel("Rise Time")
-ax.set_zlabel("Decay Time")
+x,y,z = features[0], features[1], features[2]
+ax.set_xlabel(x)
+ax.set_ylabel(y)
+ax.set_zlabel(z)
 ax.legend()
 #ax.set_title("3D Clusters Visualized with PCA")
 plt.show()

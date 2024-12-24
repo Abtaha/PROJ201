@@ -6,6 +6,8 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from kneed import KneeLocator
+import itertools
+import json
 
 # Load the dataset
 df = pd.read_csv("export_data.csv")
@@ -46,6 +48,53 @@ features = [
 # Scale the data
 scaler = MinMaxScaler()
 df_scaled = scaler.fit_transform(df[features])
+# K Means k range
+k_rng = 15
+
+# Elbow Method to find the optimal k
+def optimal(scaler, flist, k_rng):
+    sse = []
+    k_rng = range(1, k_rng)
+    df_scaled_narrower = scaler.fit_transform(df[flist])
+
+    for k in k_rng:
+        km = KMeans(n_clusters=k, random_state=42)
+        km.fit(df_scaled_narrower)
+        sse.append(km.inertia_)
+
+    kneedle = KneeLocator(k_rng, sse, curve="convex", direction="decreasing")
+    optimal_k = int(kneedle.knee)
+    if not optimal_k:
+        optimal_k = 4
+
+    return sse, optimal_k
+
+def generate_combinations(flist:list, scaler:object, combinations:int) -> dict:
+    combinations = list(itertools.combinations(flist, combinations))
+    combinations = {x:None for x in combinations}
+    print(f"Total combinations: {len(combinations)}")
+    
+    for i, comb in enumerate(combinations.keys()):
+        sse, optimal_k = optimal(scaler, list(comb), k_rng)
+        combinations[comb] = optimal_k
+    
+    combinations = {"-".join(key):val for key, val in combinations.items()}
+    sorted_combs = dict(sorted(combinations.items(), key=lambda item: item[1]))
+    print(json.dumps(sorted_combs, indent=4))
+    
+    return sorted_combs
+
+def select_distinct_features(features:list, scaler:object, combinations:int) -> list:
+    sorted = generate_combinations(features, scaler, 4)
+    # Select the last one, optional selection no rational thinking here.
+    most_features = list(sorted)[-1]
+    most_k_val = sorted[most_features]
+    optimal_k = most_k_val
+    flist = most_features.split("-")
+    print("\nOne of the feature combination that has the most distinct clustering: ")
+    for feature in flist:
+        print(feature)
+    return flist
 
 
 # PCA-based feature ranking
@@ -69,34 +118,26 @@ for feature, importance in feature_ranking:
     print(f"{feature}: {importance:.4f}")
 
 # Select the top 5 features
-top_5_features = [feature for feature, _ in feature_ranking[:5]]
+flist = [feature for feature, _ in feature_ranking[:5]]
 print("\nTop 5 Features Selected:")
-print(top_5_features)
+print(flist)
 
-# Clustering with top 5 features
-df_top_features = scaler.fit_transform(df[top_5_features])
+# An alternative approach for feature selection
+#flist = select_distinct_features(features, scaler, combinations=5)
+#df_top_features = scaler.fit_transform(df[flist])
 
-# Elbow Method to find the optimal k
-sse = []
-k_rng = range(1, 15)
-for k in k_rng:
-    km = KMeans(n_clusters=k, random_state=42)
-    km.fit(df_top_features)
-    sse.append(km.inertia_)
+df_top_features = scaler.fit_transform(df[flist])
 
-kneedle = KneeLocator(k_rng, sse, curve="convex", direction="decreasing")
-optimal_k = kneedle.knee
-
-if not optimal_k:
-    optimal_k = 4
+# Elbow method application
+sse, optimal_k = optimal(scaler, flist, k_rng)
 
 # Plot the elbow curve
 plt.figure(figsize=(10, 6))
-plt.plot(k_rng, sse, marker="o")
+plt.plot(range(1, k_rng), sse, marker="o")
 plt.xlabel("Number of clusters (k)")
 plt.ylabel("Sum of squared errors (SSE)")
 plt.title("Elbow Method for Optimal k")
-plt.xticks(range(1, len(k_rng) + 1))
+plt.xticks(range(1, k_rng))
 plt.axvline(optimal_k, color="red", linestyle="--", label="Optimal k")
 plt.show()
 
@@ -152,7 +193,7 @@ print(cluster_summary)
 
 
 # Visualize the distribution of top features
-for feature in top_5_features:
+for feature in flist:
     plt.figure(figsize=(8, 6))
     sns.boxplot(x="Cluster", y=feature, data=df)
     plt.title(f"{feature} by Cluster")
@@ -162,7 +203,7 @@ for feature in top_5_features:
 
 
 # Pairwise visualization of top features with clusters
-sns.pairplot(df, hue="Cluster", vars=top_5_features, palette="Set2", diag_kind="kde")
+sns.pairplot(df, hue="Cluster", vars=flist, palette="Set2", diag_kind="kde")
 plt.suptitle("Pairwise Plot of Top Features by Cluster", y=1.02)
 plt.show()
 
@@ -171,7 +212,7 @@ plt.show()
 centroids_original = scaler.inverse_transform(kmeans.cluster_centers_)
 
 # Create a DataFrame for easier interpretation
-centroids_df = pd.DataFrame(centroids_original, columns=top_5_features)
+centroids_df = pd.DataFrame(centroids_original, columns=flist)
 centroids_df["Cluster"] = range(optimal_k)
 print("\nCluster Centroids in Original Feature Space:")
 print(centroids_df)
@@ -180,7 +221,7 @@ from scipy.stats import f_oneway
 
 # Perform ANOVA for each top feature
 print("\nANOVA Results:")
-for feature in top_5_features:
+for feature in flist:
     groups = [df[df["Cluster"] == cluster][feature] for cluster in range(optimal_k)]
     f_stat, p_value = f_oneway(*groups)
     print(f"{feature}: F-statistic = {f_stat:.4f}, p-value = {p_value:.4e}")
