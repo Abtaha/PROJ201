@@ -76,16 +76,15 @@ if __name__ == "__main__":
 
             features = pulse.extract_features()
             if features["Rise Time"] == 0:
-                first_bin_start,first_bin_end = bins[0], bins[1]
-                features["Rise Time"] = combined.rset(first_bin_start,first_bin_end)
+                first_bin_start, first_bin_end = bins[0], bins[1]
+                features["Rise Time"] = combined.rset(first_bin_start, first_bin_end)
             if features["Decay Time"] == 0:
                 reversed = bins.reverse()
-                last_bin_end,last_bin_start = reversed[0], reversed[1]
-                combined.dset(last_bin_end,last_bin_start)    
+                last_bin_end, last_bin_start = reversed[0], reversed[1]
 
             feature_dict[i] = features
 
             i += 1
 
     export_features(feature_dict)
-    #plot_features(feature_dict)
+    # plot_features(feature_dict)
