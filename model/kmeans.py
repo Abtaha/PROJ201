@@ -21,6 +21,7 @@ features = [
 ]
 X = df[features]
 
+clusterdf = df[['Event ID']]
 # Standardize features
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
@@ -32,10 +33,15 @@ X_pca = pca.fit_transform(X_scaled)
 # K-means clustering
 kmeans = KMeans(n_clusters=3, random_state=42)
 kmeans_labels = kmeans.fit_predict(X_scaled)
+clusterdf["KMeans Cluster"] = kmeans_labels
 
 # DBSCAN clustering
 dbscan = DBSCAN(eps=1.5, min_samples=2)
 dbscan_labels = dbscan.fit_predict(X_scaled)
+clusterdf["DBScan Cluster"] = dbscan_labels
+
+clusterdf = clusterdf.drop(df.columns[0], axis=1)
+clusterdf.to_csv("clusters.csv")
 
 # Hierarchical clustering
 linkage_matrix = linkage(X_scaled, method="ward")
