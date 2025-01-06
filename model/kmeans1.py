@@ -1,11 +1,11 @@
-from sklearn.decomposition import pca
-from sklearn.preprocessing import minmaxscaler
-from sklearn.cluster import kmeans
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.cluster import KMeans
 import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from kneed import kneelocator
+from kneed import KneeLocator
 import itertools
 import json
 
@@ -46,7 +46,7 @@ features = [
 # ]
 
 # scale the data
-scaler = minmaxscaler()
+scaler = MinMaxScaler()
 df_scaled = scaler.fit_transform(df[features])
 # k means k range
 k_rng = 15
