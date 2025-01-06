@@ -39,7 +39,7 @@ dbscan = DBSCAN(eps=1.5, min_samples=2)
 dbscan_labels = dbscan.fit_predict(X_scaled)
 clusterdf["DBScan Cluster"] = dbscan_labels
 
-clusterdf.to_csv("clusters.csv", index=False)
+#clusterdf.to_csv("clusters.csv", index=False)
 
 # Hierarchical clustering
 linkage_matrix = linkage(X_scaled, method="ward")
