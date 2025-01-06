@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from scipy.cluster.hierarchy import dendrogram, linkage
 
 # Load and prepare data
-df = pd.read_csv("export_data.csv")
+df = pd.read_csv("export_data.csv", delimiter=',')#, header=0)
 features = [
     "Duration",
     "Peak Energy Bin",
@@ -20,7 +20,6 @@ features = [
     "Total Energy Released",
 ]
 X = df[features]
-
 clusterdf = df[['Event ID']]
 # Standardize features
 scaler = StandardScaler()
@@ -40,8 +39,7 @@ dbscan = DBSCAN(eps=1.5, min_samples=2)
 dbscan_labels = dbscan.fit_predict(X_scaled)
 clusterdf["DBScan Cluster"] = dbscan_labels
 
-clusterdf = clusterdf.drop(df.columns[0], axis=1)
-clusterdf.to_csv("clusters.csv")
+clusterdf.to_csv("clusters.csv", index=False)
 
 # Hierarchical clustering
 linkage_matrix = linkage(X_scaled, method="ward")
