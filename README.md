@@ -2,6 +2,7 @@
 ## Codebase outline
 __Click on their name to see the source codes.__
 #### Event handling, visualization, data extraction
+- [iddb.csv](iddb.csv) : The table where event names and their corresponding ids are stored.
 - [Event/Event.py](Event/Event.py) : The object-oriented source code for analyzing event records, extracting features, visualizing nearly everything about any event on their own. It's a custom package!
 - [Event/test.py](Event/test.py) : Code required for testing the functionality of Event.py
 - [features.py](features.py) : Handles event files, acts as a bridge between Event.py and event record files, writes every event's features to a file named [export_data.csv](export_data.csv). A total of 221 pulse features is extracted from 101 event records.
