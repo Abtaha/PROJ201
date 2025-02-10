@@ -1,4 +1,6 @@
 # Morphological Classification of Magnetar Bursts
+## Project Report
+[See the report](Project%20Final%20Report.pdf) for the introduction, methodology, application, conclusion and references.
 ## Codebase outline
 __Click on their name to see the source codes.__
 #### Event handling, visualization, data extraction
